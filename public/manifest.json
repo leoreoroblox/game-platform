@@ -1,0 +1,21 @@
+{
+  "name": "Leo Game",
+  "short_name": "LeoGame",
+  "description": "Play. Create. Connect. The ultimate platform for players and creators.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#06b6d4",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
