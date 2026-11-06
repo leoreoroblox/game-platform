@@ -96,13 +96,14 @@ function ExploreContent() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredGames.map((game) => (
-            <GameCard 
-              key={game.id} 
-              id={game.id}
-              title={game.title} 
-              creator={game.creator || 'Unknown Creator'} 
-              players={String(game.players)} 
-            />
+                   <GameCard 
+          key={game.id} 
+          id={game.id}
+          title={game.title} 
+          creator={game.creator || 'Unknown Creator'} 
+          players={String(game.players)} 
+          cover_url={game.cover_url} // 👈 加上這行
+        />
           ))}
         </div>
       )}
