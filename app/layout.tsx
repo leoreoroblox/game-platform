@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -28,11 +29,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900`}>
-        <SiteStatus />      {/* 跑馬燈與維護遮罩 */}
-        <ClientLoader />    {/* 開頭載入畫面 */}
-        <UserTracker />     {/* 抓取真實 IP 與設備指紋 */}
-        <BanOverlay />      {/* 紅色封禁遮罩 */}
+         <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900`}>
+        <Suspense fallback={null}>
+          <SiteStatus />
+          <ClientLoader />
+          <UserTracker />
+          <BanOverlay />
+        </Suspense>
         {children}
       </body>
     </html>
