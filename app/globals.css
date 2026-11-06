@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* ================= 基礎主題變數 ================= */
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  /* 防止水平滾動條出現 */
+  overflow-x: hidden; 
+}
+
+/* ================= 跑馬燈動畫 ================= */
+
+/* 1. 由右至左 (預設) */
+@keyframes marquee-left {
+  0% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+/* 2. 由左至右 */
+@keyframes marquee-right {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100vw);
+  }
+}
+
+/* ================= 輔助工具類別 ================= */
+
+/* 隱藏捲軸（用於首頁的橫向分類選單） */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
