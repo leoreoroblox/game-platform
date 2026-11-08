@@ -1,14 +1,12 @@
-'use client';
-import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
+export const instant = false;
 
-// 動態載入 3D 世界 (避免伺服器端預渲染報錯)
-const World3D = dynamic(() => import('../components/World3D'), { ssr: false });
+import { Suspense } from 'react';
+import WorldClient from '../components/WorldClient';
 
 export default function WorldPage() {
-  const router = useRouter();
-
   return (
-    <World3D onExit={() => router.push('/')} />
+    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-cyan-400">Loading World...</div>}>
+      <WorldClient />
+    </Suspense>
   );
 }
