@@ -61,12 +61,18 @@ export default function Navbar() {
           <img src="/logo.png" alt="Leo Game" className="h-10 object-contain" />
         </Link>
 
+        {/* 電腦版導航連結 */}
         <div className="hidden md:flex gap-8 items-center font-medium text-sm text-gray-300">
           <Link href="#" className="hover:text-white transition">Explore</Link>
           <Link href="/create" className="hover:text-white transition">Create</Link>
           <Link href="#" className="hover:text-white transition">Marketplace</Link>
           <Link href="#" className="hover:text-white transition">Community</Link>
           <Link href="#" className="hover:text-white transition">Developers</Link>
+          
+          {/* 🚀 新增的 Updates 按鈕 */}
+          <Link href="/changelog" className="text-cyan-400 hover:text-cyan-300 transition font-bold flex items-center gap-1">
+            Updates
+          </Link>
         </div>
 
         <div className="flex items-center gap-4">
@@ -92,7 +98,6 @@ export default function Navbar() {
 
               {isProfileOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden py-2">
-                  {/* 這裡使用抓到的 uid 來跳轉 */}
                   <Link href={`/users/${uid}`} className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition">My Profile</Link>
                   <Link href="#" className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition">Settings</Link>
                   <div className="border-t border-gray-700 my-1"></div>
@@ -106,19 +111,26 @@ export default function Navbar() {
             Download Client
           </button>
 
+          {/* 手機版漢堡選單按鈕 */}
           <button className="md:hidden text-gray-300 text-2xl" onClick={() => setIsMenuOpen(!isMenuOpen)}>
             ☰
           </button>
         </div>
       </nav>
 
-      {/* 手機版選單 */}
+      {/* 手機版彈出選單 */}
       {isMenuOpen && (
         <div className="fixed inset-0 bg-gray-950/95 backdrop-blur-lg z-40 flex flex-col items-center justify-center gap-8 text-xl font-bold text-gray-300 md:hidden">
           <button onClick={() => setIsMenuOpen(false)} className="absolute top-6 right-6 text-3xl text-gray-500">✖</button>
           <Link href="#" onClick={() => setIsMenuOpen(false)}>Explore</Link>
           <Link href="/create" onClick={() => setIsMenuOpen(false)}>Create</Link>
           <Link href="#" onClick={() => setIsMenuOpen(false)}>Marketplace</Link>
+          
+          {/* 🚀 手機版新增的 Updates 按鈕 */}
+          <Link href="/changelog" onClick={() => setIsMenuOpen(false)} className="text-cyan-400 font-bold">
+            Updates
+          </Link>
+
           {user ? (
             <button onClick={handleLogout} className="mt-8 text-red-400">Log Out</button>
           ) : (
