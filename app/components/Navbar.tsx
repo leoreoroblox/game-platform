@@ -58,7 +58,6 @@ export default function Navbar() {
     <>
       <nav className="fixed top-0 w-full h-16 flex items-center justify-between px-6 bg-gray-950 border-b border-gray-800 z-50">
         
-        {/* 左側 Logo 與連結 */}
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center">
             <img src="/logo.png" alt="Leo Game" className="h-10 object-contain" />
@@ -66,13 +65,11 @@ export default function Navbar() {
 
           <div className="hidden md:flex gap-6 items-center font-bold text-sm text-gray-400">
             <Link href="/" className="hover:text-white transition">Explore</Link>
-            <Link href="/create" className="hover:text-white transition">Create</Link>
             <Link href="/store" className="hover:text-white transition">Marketplace</Link>
             <Link href="/changelog" className="text-cyan-400 hover:text-cyan-300 transition">Updates</Link>
           </div>
         </div>
 
-        {/* 右側用戶狀態 */}
         <div className="flex items-center gap-4">
           {!user ? (
             <Link href="/login" className="hidden md:block text-gray-300 hover:text-white transition font-bold text-sm">
@@ -94,7 +91,6 @@ export default function Navbar() {
                 <span className="text-gray-300 text-sm font-bold hidden md:block">{username}</span>
               </button>
 
-              {/* 下拉選單 */}
               {isProfileOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden py-2">
                   <Link href={`/users/${uid}`} className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition font-medium">My Profile</Link>
@@ -110,18 +106,15 @@ export default function Navbar() {
             Download Client
           </button>
 
-          {/* 手機版漢堡選單按鈕 */}
           <button className="md:hidden text-gray-300 text-2xl" onClick={() => setIsMenuOpen(!isMenuOpen)}>
             ☰
           </button>
         </div>
       </nav>
 
-      {/* 手機版選單 */}
       {isMenuOpen && (
         <div className="fixed inset-0 top-16 bg-gray-950/95 backdrop-blur-lg z-40 flex flex-col p-6 gap-6 text-lg font-bold text-gray-300 md:hidden">
           <Link href="/" onClick={() => setIsMenuOpen(false)}>Explore</Link>
-          <Link href="/create" onClick={() => setIsMenuOpen(false)}>Create</Link>
           <Link href="/store" onClick={() => setIsMenuOpen(false)}>Marketplace</Link>
           <Link href="/changelog" onClick={() => setIsMenuOpen(false)} className="text-cyan-400">Updates</Link>
           

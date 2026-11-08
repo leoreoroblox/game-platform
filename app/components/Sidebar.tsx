@@ -41,6 +41,7 @@ export default function Sidebar() {
 
   const menuItems = [
     { name: 'Home', icon: '🏠', href: '/', requireAuth: false },
+    { name: '3D World', icon: '🌍', href: '/world', requireAuth: true },
     { name: 'Profile', icon: '👤', href: profile ? `/users/${profile.uid}` : '/login', requireAuth: true },
     { name: 'Avatar', icon: '🧍', href: '/avatar', requireAuth: true },
     { name: 'Store', icon: '🛍️', href: '/store', requireAuth: false },
