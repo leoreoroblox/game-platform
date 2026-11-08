@@ -8,8 +8,8 @@ import UserTracker from './components/UserTracker';
 import BanOverlay from './components/BanOverlay';
 import SiteStatus from './components/SiteStatus';
 import UpdateNotifier from './components/UpdateNotifier';
-import Navbar from './components/Navbar'; // 🚀 把 Navbar 放到全局
-import Sidebar from './components/Sidebar'; // 🚀 引入側邊欄
+import Navbar from './components/Navbar'; 
+import Sidebar from './components/Sidebar'; 
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -36,13 +36,16 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <UpdateNotifier />
         </Suspense>
 
-        {/* 全局頂部導航 */}
+        {/* 頂部導航 */}
         <Navbar /> 
         
-        {/* 全局佈局：左側選單 + 右側內容 */}
+        {/* 🚀 左右佈局：左側選單 + 右側內容 */}
         <div className="flex min-h-screen pt-16">
-          <Sidebar />
-          {/* 🚀 右側內容區：因為左邊有 64 (w-64) 的側邊欄，所以主內容區需要左邊距 ml-64 */}
+          {/* 用 Suspense 包裹 Sidebar，解決 usePathname 報錯 */}
+          <Suspense fallback={<div className="w-64 bg-gray-950 hidden md:block fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-gray-800" />}>
+            <Sidebar />
+          </Suspense>
+          
           <main className="flex-1 md:ml-64 w-full">
             {children}
           </main>
