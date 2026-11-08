@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import Link from 'next/link';
 
 export default function UpdateNotifier() {
   const [latestLog, setLatestLog] = useState<any>(null);
@@ -8,33 +9,17 @@ export default function UpdateNotifier() {
 
   useEffect(() => {
     const checkUpdate = async () => {
-      // 1. 抓取最新一筆更新日誌
-      const { data } = await supabase
-        .from('changelogs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
+      const { data } = await supabase.from('changelogs').select('*').eq('is_hidden', false).order('created_at', { ascending: false }).limit(1).single();
       if (!data) return;
 
-      // 2. 檢查是否有設定過期時間，且是否已過期
-      if (data.notification_expires_at && new Date(data.notification_expires_at) < new Date()) {
-        return; // 已過期，不顯示
-      }
+      if (data.notification_expires_at && new Date(data.notification_expires_at) < new Date()) return;
 
-      // 3. 檢查玩家是否已經看過這個版本的提示 (用 localStorage 記錄)
       const seenLogs = JSON.parse(localStorage.getItem('leo_seen_updates') || '[]');
-      if (seenLogs.includes(data.id)) {
-        return; // 已經看過，不顯示
-      }
+      if (seenLogs.includes(data.id)) return;
 
-      // 如果都通過，就顯示彈窗
       setLatestLog(data);
       setIsVisible(true);
     };
-
-    // 延遲 2 秒執行，避免影響網頁載入體驗
     const timer = setTimeout(checkUpdate, 2000);
     return () => clearTimeout(timer);
   }, []);
@@ -42,7 +27,6 @@ export default function UpdateNotifier() {
   const handleClose = () => {
     setIsVisible(false);
     if (latestLog) {
-      // 記錄到 localStorage，下次不再彈出
       const seenLogs = JSON.parse(localStorage.getItem('leo_seen_updates') || '[]');
       if (!seenLogs.includes(latestLog.id)) {
         seenLogs.push(latestLog.id);
@@ -56,8 +40,6 @@ export default function UpdateNotifier() {
   return (
     <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-[fadeIn_0.3s_ease-out]">
       <div className="bg-gray-900 border border-cyan-500/30 rounded-2xl p-8 w-full max-w-lg shadow-[0_0_50px_rgba(6,182,212,0.15)] relative overflow-hidden animate-[scaleIn_0.3s_ease-out]">
-        
-        {/* 背景光暈 */}
         <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 blur-[80px] rounded-full pointer-events-none"></div>
 
         <div className="relative z-10">
@@ -76,9 +58,12 @@ export default function UpdateNotifier() {
           </div>
 
           <div className="flex gap-3">
-            <button onClick={handleClose} className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-xl transition shadow-[0_0_15px_rgba(0,255,204,0.3)]">
-              開始探索 Leo Game
+            <button onClick={handleClose} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-xl transition border border-gray-700">
+              關閉
             </button>
+            <Link href="/changelog" onClick={handleClose} className="flex-1 text-center bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-xl transition shadow-[0_0_15px_rgba(0,255,204,0.3)]">
+              查看歷史更新
+            </Link>
           </div>
         </div>
       </div>
