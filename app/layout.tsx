@@ -30,7 +30,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900`}>
         
-        {/* 🚀 用 Suspense 包住 AuthGuard，解決 Next.js 的 Segment 警告 */}
         <Suspense fallback={<div className="min-h-screen bg-[#050810]" />}>
           <AuthGuard>
             <Suspense fallback={null}>
@@ -48,7 +47,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <Sidebar />
               </Suspense>
               
-              <main className="flex-1 md:ml-64 w-full">
+              {/* 🚀 這裡加上了 relative，確保 3D 高度正確 */}
+              <main className="flex-1 md:ml-64 w-full relative">
                 {children}
               </main>
             </div>
