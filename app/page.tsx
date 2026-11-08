@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import Navbar from './components/Navbar';
 import GameCard from './components/GameCard';
 import { supabase } from '../lib/supabase';
 
@@ -22,7 +21,6 @@ function ExploreContent() {
     fetchGames();
   }, []);
 
-  // 過濾邏輯
   const filteredGames = games.filter((game) => {
     const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (game.creator && game.creator.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -31,7 +29,7 @@ function ExploreContent() {
   });
 
   return (
-    <div className="pt-32 pb-20 px-8 max-w-7xl mx-auto">
+    <div className="pt-10 pb-20 px-8 max-w-7xl mx-auto">
       {/* 英雄區塊 */}
       <div className="text-center mb-16 relative">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/20 blur-[120px] rounded-full pointer-events-none"></div>
@@ -55,7 +53,6 @@ function ExploreContent() {
 
       {/* 搜尋與分類區塊 */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-gray-800 pb-6">
-        {/* 分類 Tabs */}
         <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
           {categories.map((cat) => (
             <button
@@ -72,7 +69,6 @@ function ExploreContent() {
           ))}
         </div>
 
-        {/* 搜尋框 */}
         <div className="relative w-full md:w-72">
           <svg className="w-5 h-5 absolute left-3 top-2.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           <input 
@@ -96,14 +92,14 @@ function ExploreContent() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredGames.map((game) => (
-                   <GameCard 
-          key={game.id} 
-          id={game.id}
-          title={game.title} 
-          creator={game.creator || 'Unknown Creator'} 
-          players={String(game.players)} 
-          cover_url={game.cover_url} // 👈 加上這行
-        />
+            <GameCard 
+              key={game.id} 
+              id={game.id}
+              title={game.title} 
+              creator={game.creator || 'Unknown Creator'} 
+              players={String(game.players)} 
+              cover_url={game.cover_url}
+            />
           ))}
         </div>
       )}
@@ -114,8 +110,6 @@ function ExploreContent() {
 export default function Home() {
   return (
     <main className="min-h-screen bg-gray-900 text-white">
-      <Navbar />
-      {/* 這裡保留 Suspense 是為了防範未來的 Next.js 報錯 */}
       <Suspense fallback={<div className="pt-32 text-center text-cyan-400">Loading...</div>}>
         <ExploreContent />
       </Suspense>
