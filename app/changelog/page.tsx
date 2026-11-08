@@ -2,10 +2,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function ChangelogPage() {
+  const router = useRouter();
   const [logs, setLogs] = useState<any[]>([]);
   const [comments, setComments] = useState<{ [key: string]: any[] }>({});
+  const [likedLogs, setLikedLogs] = useState<string[]>([]); // 記錄當前用戶點過讚的版本
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -13,15 +16,23 @@ export default function ChangelogPage() {
   const [inputText, setInputText] = useState<{ [key: string]: string }>({});
   const [selectedReaction, setSelectedReaction] = useState<{ [key: string]: string }>({});
 
-  const fetchLogsAndUser = async () => {
+  const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
+    let currentUserId = null;
+    
     if (session) {
       const { data: userData } = await supabase.from('users').select('*').eq('id', session.user.id).single();
       setCurrentUser(userData);
+      currentUserId = session.user.id;
+
+      // 抓取該用戶所有點過讚的紀錄
+      const { data: likesData } = await supabase.from('changelog_likes').select('changelog_id').eq('user_id', currentUserId);
+      if (likesData) setLikedLogs(likesData.map(l => l.changelog_id));
     }
 
     // 抓取沒有被隱藏的版本
     const { data } = await supabase.from('changelogs').select('*').eq('is_hidden', false).order('created_at', { ascending: false });
+    
     if (data) {
       setLogs(data);
       // 抓取每個版本的留言
@@ -38,39 +49,85 @@ export default function ChangelogPage() {
   };
 
   useEffect(() => {
-    fetchLogsAndUser();
+    fetchData();
   }, []);
 
-  const handleVote = async (id: string, type: 'like' | 'dislike') => {
-    const votedKey = `voted_${type}_${id}`;
-    if (localStorage.getItem(votedKey)) return; // 已經點過
+  // 🚀 點贊邏輯
+  const handleVote = async (logId: string) => {
+    // 1. 檢查是否登入
+    if (!currentUser) {
+      alert('請先登入才能點讚喔！');
+      router.push('/login');
+      return;
+    }
 
-    const log = logs.find(l => l.id === id);
-    if (!log) return;
+    // 2. 檢查是否已經點過讚
+    if (likedLogs.includes(logId)) {
+      alert('您已經點過讚囉！');
+      return;
+    }
 
-    const updateField = type === 'like' ? 'likes' : 'dislikes';
-    await supabase.from('changelogs').update({ [updateField]: (log[updateField] || 0) + 1 }).eq('id', id);
-    
-    localStorage.setItem(votedKey, 'true');
-    fetchLogsAndUser();
+    try {
+      // 3. 新增點贊紀錄
+      const { error: insertError } = await supabase.from('changelog_likes').insert([{
+        changelog_id: logId,
+        user_id: currentUser.id
+      }]);
+
+      if (insertError) throw insertError;
+
+      // 4. 更新該版本的總讚數
+      const log = logs.find(l => l.id === logId);
+      const newLikesCount = (log.likes || 0) + 1;
+      
+      await supabase.from('changelogs').update({ likes: newLikesCount }).eq('id', logId);
+
+      // 5. 更新本地畫面狀態 (無需重新整理)
+      setLikedLogs([...likedLogs, logId]);
+      setLogs(logs.map(l => l.id === logId ? { ...l, likes: newLikesCount } : l));
+      
+    } catch (err: any) {
+      alert('點讚失敗：' + err.message);
+    }
   };
 
-  const handleComment = async (id: string) => {
-    if (!currentUser) return alert('請先登入才能留言喔！');
-    const text = inputText[id];
+  // 🚀 留言與表情邏輯
+  const handleComment = async (logId: string) => {
+    // 1. 檢查是否登入
+    if (!currentUser) {
+      alert('請先登入才能留言喔！');
+      router.push('/login');
+      return;
+    }
+
+    const text = inputText[logId];
     if (!text || text.trim() === '') return;
 
-    await supabase.from('changelog_comments').insert([{
-      changelog_id: id,
+    // 2. 檢查留言次數限制 (最多5次)
+    const currentComments = comments[logId] || [];
+    const myCommentCount = currentComments.filter(c => c.user_id === currentUser.id).length;
+    
+    if (myCommentCount >= 5) {
+      alert('您在這個版本已經留言達到 5 次上限囉！');
+      return;
+    }
+
+    // 3. 發送留言
+    const { error } = await supabase.from('changelog_comments').insert([{
+      changelog_id: logId,
       user_id: currentUser.id,
       username: currentUser.username,
       content: text,
-      reaction: selectedReaction[id] || null
+      reaction: selectedReaction[logId] || null
     }]);
 
-    setInputText({ ...inputText, [id]: '' });
-    setSelectedReaction({ ...selectedReaction, [id]: '' });
-    fetchLogsAndUser();
+    if (error) {
+      alert('留言失敗：' + error.message);
+    } else {
+      setInputText({ ...inputText, [logId]: '' });
+      setSelectedReaction({ ...selectedReaction, [logId]: '' });
+      fetchData(); // 重新抓取留言
+    }
   };
 
   if (loading) return <div className="min-h-screen bg-gray-900 text-cyan-400 flex items-center justify-center animate-pulse">Loading Updates...</div>;
@@ -85,6 +142,7 @@ export default function ChangelogPage() {
         <div className="space-y-12 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-700 before:to-transparent">
           {logs.map((log) => {
             const logComments = comments[log.id] || [];
+            const hasLiked = likedLogs.includes(log.id);
             
             return (
               <div key={log.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
@@ -102,7 +160,6 @@ export default function ChangelogPage() {
                   <h3 className="text-white font-bold text-2xl mb-4">{log.title}</h3>
                   <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed mb-4">{log.content}</p>
 
-                  {/* 圖片展示 */}
                   {log.image_urls && log.image_urls.length > 0 && (
                     <div className="grid grid-cols-2 gap-2 mb-4">
                       {log.image_urls.map((url: string, i: number) => (
@@ -111,13 +168,13 @@ export default function ChangelogPage() {
                     </div>
                   )}
 
-                  {/* 互動區 (按讚/留言) */}
+                  {/* 互動區 (按讚) */}
                   <div className="flex items-center gap-4 border-t border-gray-700 pt-4 mb-4">
-                    <button onClick={() => handleVote(log.id, 'like')} className="flex items-center gap-2 text-gray-400 hover:text-green-400 transition font-bold">
+                    <button 
+                      onClick={() => handleVote(log.id)} 
+                      className={`flex items-center gap-2 transition font-bold ${hasLiked ? 'text-cyan-400' : 'text-gray-400 hover:text-cyan-400'}`}
+                    >
                       👍 <span>{log.likes || 0}</span>
-                    </button>
-                    <button onClick={() => handleVote(log.id, 'dislike')} className="flex items-center gap-2 text-gray-400 hover:text-red-400 transition font-bold">
-                      👎
                     </button>
                   </div>
 
@@ -145,13 +202,20 @@ export default function ChangelogPage() {
                       <div className="flex gap-2">
                         <input 
                           type="text" 
-                          placeholder="Write a comment..." 
-                          className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-500"
+                          placeholder={currentUser ? "Write a comment..." : "Login to comment..."}
+                          className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-500 disabled:opacity-50"
                           value={inputText[log.id] || ''}
                           onChange={(e) => setInputText({ ...inputText, [log.id]: e.target.value })}
                           onKeyDown={(e) => e.key === 'Enter' && handleComment(log.id)}
+                          disabled={!currentUser}
                         />
-                        <button onClick={() => handleComment(log.id)} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition">Send</button>
+                        <button 
+                          onClick={() => handleComment(log.id)} 
+                          disabled={!currentUser}
+                          className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 disabled:text-gray-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition"
+                        >
+                          Send
+                        </button>
                       </div>
                     </div>
                   </div>
