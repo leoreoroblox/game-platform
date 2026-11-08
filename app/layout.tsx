@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Suspense } from 'react';
+
 import ClientLoader from './components/ClientLoader';
 import UserTracker from './components/UserTracker';
 import BanOverlay from './components/BanOverlay';
 import SiteStatus from './components/SiteStatus';
+import UpdateNotifier from './components/UpdateNotifier'; // 🚀 引入更新彈窗
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,7 +22,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Leo Game",
   description: "Play. Create. Connect. The ultimate platform for players and creators.",
-  manifest: "/manifest.json", // 指向 PWA 設定檔
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -41,6 +43,7 @@ export default function RootLayout({
           <ClientLoader />
           <UserTracker />
           <BanOverlay />
+          <UpdateNotifier /> {/* 🚀 放在這裡，全站生效 */}
         </Suspense>
         {children}
       </body>
