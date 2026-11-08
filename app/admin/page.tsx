@@ -7,6 +7,9 @@ import AdminUserDrawer from '../components/AdminUserDrawer';
 import AdminGameDrawer from '../components/AdminGameDrawer';
 import AdminChangelog from '../components/AdminChangelog';
 
+// 🚀 引入 Recharts 圖表組件
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+
 export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -75,9 +78,8 @@ export default function AdminPage() {
       if (userData?.role === 'admin') { 
         setIsAdmin(true); 
         fetchData(); 
-        // 🚀 觸發歡迎動畫
         setShowWelcome(true);
-        setTimeout(() => setShowWelcome(false), 2500); // 2.5秒後淡出
+        setTimeout(() => setShowWelcome(false), 2500); 
       } else { 
         router.push('/'); 
       }
@@ -86,7 +88,6 @@ export default function AdminPage() {
     checkAdmin();
   }, [router]);
 
-  // 以下保留原本的 handle 函數 (handleGlobalCoins, handleSaveMarquee, handleStartMaintenance, handleStopMaintenance)
   const handleGlobalCoins = async () => {
     if (!globalCoins || globalCoins === 0) return;
     if (!confirm(`確定要為全站所有玩家發放 ${globalCoins} 金幣嗎？`)) return;
@@ -168,7 +169,7 @@ export default function AdminPage() {
   if (checkingAuth) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center font-mono">Checking Permissions...</div>;
   if (!isAdmin) return null;
 
-  // 🚀 計算真實數據用於總覽
+  // 計算真實數據
   const totalCoins = users.reduce((acc, u) => acc + (u.leo_coins || 0), 0);
   const adminCount = users.filter(u => u.role === 'admin').length;
   const vipCount = users.filter(u => u.vip_level === 'VIP').length;
@@ -176,9 +177,29 @@ export default function AdminPage() {
   const rpgGames = games.filter(g => g.category === 'RPG').length;
   const simulatorGames = games.filter(g => g.category === 'Simulator').length;
 
-  // 🚀 生成 32 個數據卡片
+  // 🚀 模擬圖表數據 (未來可改為從資料庫計算真實趨勢)
+  const userChartData = [
+    { name: '11/01', users: 10, games: 2 },
+    { name: '11/02', users: 25, games: 4 },
+    { name: '11/03', users: 15, games: 3 },
+    { name: '11/04', users: 45, games: 6 },
+    { name: '11/05', users: 60, games: 8 },
+    { name: '11/06', users: 80, games: 12 },
+    { name: '11/07', users: users.length, games: games.length }, // 最後一天用真實數據
+  ];
+
+  // 遊戲分類餅圖數據
+  const pieData = [
+    { name: 'Action', value: actionGames },
+    { name: 'RPG', value: rpgGames },
+    { name: 'Simulator', value: simulatorGames },
+    { name: 'Other', value: Math.max(0, games.length - actionGames - rpgGames - simulatorGames) },
+  ].filter(d => d.value > 0); // 過濾掉 0 的數據
+
+  const COLORS = ['#06b6d4', '#8b5cf6', '#10b981', '#f59e0b'];
+
+  // 32 個數據卡片
   const statsData = [
-    // 真實數據
     { label: '總註冊用戶', val: users.length, icon: '👥', color: 'text-cyan-400' },
     { label: '總遊戲數量', val: games.length, icon: '🎮', color: 'text-purple-400' },
     { label: '全站金幣總量', val: totalCoins.toLocaleString(), icon: '🪙', color: 'text-yellow-400' },
@@ -187,7 +208,6 @@ export default function AdminPage() {
     { label: 'Action 遊戲', val: actionGames, icon: '⚔️', color: 'text-orange-400' },
     { label: 'RPG 遊戲', val: rpgGames, icon: '🧙‍♂️', color: 'text-green-400' },
     { label: 'Simulator 遊戲', val: simulatorGames, icon: '🏗️', color: 'text-blue-400' },
-    // 模擬數據 (讓面板看起來很豐富)
     { label: '今日活躍用戶', val: '856', icon: '🔥', color: 'text-red-400' },
     { label: '目前線上人數', val: '142', icon: '🟢', color: 'text-emerald-400' },
     { label: '今日新增用戶', val: '+23', icon: '📈', color: 'text-cyan-300' },
@@ -217,13 +237,10 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex relative overflow-hidden">
       
-      {/* 🚀 歡迎進入後台動畫 */}
       {showWelcome && (
         <div className="fixed inset-0 z-[99999] bg-gray-950 flex flex-col items-center justify-center animate-[fadeOut_2.5s_ease-in-out_forwards] pointer-events-none">
           <div className="text-6xl mb-6 animate-bounce">👑</div>
-          <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-widest uppercase animate-pulse">
-            Welcome to Admin
-          </h1>
+          <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-widest uppercase animate-pulse">Welcome to Admin</h1>
           <p className="text-gray-400 mt-4 tracking-[0.3em]">LEO GAME CONTROL CENTER</p>
         </div>
       )}
@@ -232,7 +249,7 @@ export default function AdminPage() {
       {drawerUser && <AdminUserDrawer user={drawerUser} onClose={() => setDrawerUser(null)} onRefresh={fetchData} />}
       {drawerGame && <AdminGameDrawer game={drawerGame} onClose={() => setDrawerGame(null)} onRefresh={fetchData} />}
 
-      {/* (原本的啟動維護彈窗代碼保持不變，這裡為了節省版面省略，請確保你有貼上) */}
+      {/* 啟動維護彈窗 */}
       {showMaintenanceModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
           <div className="bg-gray-800 border border-gray-700 rounded-2xl p-8 w-full max-w-2xl shadow-2xl">
@@ -247,12 +264,9 @@ export default function AdminPage() {
                   <label className="block text-sm text-gray-400 mb-3 font-bold">設定多久之後開始倒數？</label>
                   <div className="grid grid-cols-6 gap-2">
                     {[
-                      { label: '年', value: startDelayYears, setter: setStartDelayYears },
-                      { label: '月', value: startDelayMonths, setter: setStartDelayMonths },
-                      { label: '日', value: startDelayDays, setter: setStartDelayDays },
-                      { label: '時', value: startDelayHours, setter: setStartDelayHours },
-                      { label: '分', value: startDelayMinutes, setter: setStartDelayMinutes },
-                      { label: '秒', value: startDelaySeconds, setter: setStartDelaySeconds }
+                      { label: '年', value: startDelayYears, setter: setStartDelayYears }, { label: '月', value: startDelayMonths, setter: setStartDelayMonths },
+                      { label: '日', value: startDelayDays, setter: setStartDelayDays }, { label: '時', value: startDelayHours, setter: setStartDelayHours },
+                      { label: '分', value: startDelayMinutes, setter: setStartDelayMinutes }, { label: '秒', value: startDelaySeconds, setter: setStartDelaySeconds }
                     ].map((f, i) => (
                       <div key={i} className="flex flex-col">
                         <label className="text-xs text-gray-500 mb-1 text-center">{f.label}</label>
@@ -327,7 +341,6 @@ export default function AdminPage() {
 
         <div className="flex-1 overflow-y-auto p-8">
           
-          {/* 🚀 全新 32 個數據總覽面板 */}
           {activeTab === 'dashboard' && (
              <div>
                <div className="flex justify-between items-end mb-6">
@@ -341,7 +354,8 @@ export default function AdminPage() {
                  </div>
                </div>
 
-               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+               {/* 數據卡片 */}
+               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
                  {statsData.map((stat, i) => (
                    <div key={i} className="bg-gray-800/80 p-5 rounded-xl border border-gray-700/50 hover:border-cyan-500/50 hover:bg-gray-800 transition shadow-lg group">
                      <div className="flex justify-between items-start mb-2">
@@ -351,6 +365,82 @@ export default function AdminPage() {
                      <div className={`text-2xl font-bold ${stat.color} font-mono`}>{stat.val}</div>
                    </div>
                  ))}
+               </div>
+
+               {/* 🚀 數據圖表區塊 */}
+               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                 
+                 {/* 折線圖：用戶與遊戲增長趨勢 */}
+                 <div className="bg-gray-800/80 p-6 rounded-xl border border-gray-700/50 lg:col-span-2 shadow-lg">
+                   <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">📈 平台增長趨勢 (近七天)</h3>
+                   <div className="h-72 w-full">
+                     <ResponsiveContainer width="100%" height="100%">
+                       <AreaChart data={userChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                         <defs>
+                           <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                             <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8}/>
+                             <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                           </linearGradient>
+                           <linearGradient id="colorGames" x1="0" y1="0" x2="0" y2="1">
+                             <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                             <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                           </linearGradient>
+                         </defs>
+                         <XAxis dataKey="name" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
+                         <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
+                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                         <Tooltip 
+                           contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', borderRadius: '8px', color: '#fff' }}
+                           itemStyle={{ color: '#fff' }}
+                         />
+                         <Area type="monotone" dataKey="users" name="總用戶" stroke="#06b6d4" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
+                         <Area type="monotone" dataKey="games" name="總遊戲" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorGames)" />
+                       </AreaChart>
+                     </ResponsiveContainer>
+                   </div>
+                 </div>
+
+                 {/* 圓餅圖：遊戲分類佔比 */}
+                 <div className="bg-gray-800/80 p-6 rounded-xl border border-gray-700/50 shadow-lg">
+                   <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">🎮 遊戲分類佔比</h3>
+                   <div className="h-72 w-full flex items-center justify-center">
+                     {pieData.length > 0 ? (
+                       <ResponsiveContainer width="100%" height="100%">
+                         <PieChart>
+                           <Pie
+                             data={pieData}
+                             cx="50%"
+                             cy="50%"
+                             innerRadius={60}
+                             outerRadius={100}
+                             paddingAngle={5}
+                             dataKey="value"
+                             stroke="none"
+                           >
+                             {pieData.map((entry, index) => (
+                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                             ))}
+                           </Pie>
+                           <Tooltip 
+                             contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', borderRadius: '8px', color: '#fff' }}
+                           />
+                         </PieChart>
+                       </ResponsiveContainer>
+                     ) : (
+                       <p className="text-gray-500">目前尚無遊戲數據</p>
+                     )}
+                   </div>
+                   {/* 圖例 */}
+                   <div className="flex flex-wrap justify-center gap-4 mt-2">
+                     {pieData.map((entry, index) => (
+                       <div key={index} className="flex items-center gap-2 text-sm text-gray-300">
+                         <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></span>
+                         {entry.name} ({entry.value})
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+
                </div>
              </div>
           )}
@@ -372,7 +462,6 @@ export default function AdminPage() {
           {activeTab === 'global' && (
             <div className="max-w-6xl space-y-8">
               <h1 className="text-2xl font-bold mb-6">系統與全站控制</h1>
-
               <div className="bg-gray-800/40 border border-gray-700/80 rounded-2xl p-8 relative shadow-2xl">
                 <h2 className="text-xl font-bold mb-6 flex items-center gap-2">📢 全站跑馬燈設定</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -437,7 +526,6 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* 歡迎動畫的 CSS Keyframes (插在最後面) */}
       <style jsx>{`
         @keyframes fadeOut {
           0% { opacity: 1; visibility: visible; }
