@@ -12,6 +12,9 @@ export default function ChangelogPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // 🚀 新增：用來存放所有用戶的資料，方便比對身分
+  const [userDict, setUserDict] = useState<{ [key: string]: any }>({});
+
   const [inputText, setInputText] = useState<{ [key: string]: string }>({});
   const [selectedReaction, setSelectedReaction] = useState<{ [key: string]: string }>({});
   const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
@@ -25,6 +28,14 @@ export default function ChangelogPage() {
     const { data: { session } } = await supabase.auth.getSession();
     let currentUserId = null;
     
+    // 抓取所有用戶，建立字典 (用於顯示 ADMIN / OWNER 標籤)
+    const { data: allUsers } = await supabase.from('users').select('id, uid, role');
+    if (allUsers) {
+      const dict: any = {};
+      allUsers.forEach(u => dict[u.id] = u);
+      setUserDict(dict);
+    }
+
     if (session) {
       const { data: userData } = await supabase.from('users').select('*').eq('id', session.user.id).single();
       setCurrentUser(userData);
@@ -61,23 +72,28 @@ export default function ChangelogPage() {
       return;
     }
 
-    if (likedLogs.includes(logId)) {
-      showToast('You have already liked this update!', 'info');
-      return;
+    const isAdmin = currentUser.role === 'admin' || currentUser.role === 'owner';
+
+    if (isAdmin) {
+      if (!window.confirm('管理員特權：確定要額外增加一個讚嗎？')) return;
+    } else {
+      if (likedLogs.includes(logId)) {
+        showToast('You have already liked this update!', 'info');
+        return;
+      }
     }
 
     try {
-      // 1. 記錄點讚
-      const { error: insertError } = await supabase.from('changelog_likes').insert([{ changelog_id: logId, user_id: currentUser.id }]);
-      if (insertError) throw insertError;
+      if (!isAdmin) {
+        const { error: insertError } = await supabase.from('changelog_likes').insert([{ changelog_id: logId, user_id: currentUser.id }]);
+        if (insertError) throw insertError;
+      }
 
-      // 2. 呼叫安全函數，在資料庫把讚數 +1
       await supabase.rpc('increment_changelog_likes', { log_id: logId });
 
-      // 3. 樂觀更新前端畫面（不用重新整理，數字直接 +1）
       setLikedLogs([...likedLogs, logId]);
       setLogs(logs.map(l => l.id === logId ? { ...l, likes: (l.likes || 0) + 1 } : l));
-      showToast('Thanks for your feedback!', 'success');
+      showToast(isAdmin ? 'Admin +1 Like added!' : 'Thanks for your feedback!', 'success');
       
     } catch (err: any) {
       showToast('Failed to like. Please try again.', 'error');
@@ -183,14 +199,37 @@ export default function ChangelogPage() {
 
                   <div className="bg-gray-900 rounded-xl p-4">
                     <h4 className="text-sm font-bold text-gray-400 mb-3">Comments ({logComments.length})</h4>
-                    <div className="space-y-3 mb-4 max-h-40 overflow-y-auto custom-scrollbar">
-                      {logComments.map(c => (
-                        <div key={c.id} className="bg-gray-800 p-2 rounded-lg text-sm">
-                          <span className="text-cyan-400 font-bold mr-2">{c.username}</span>
-                          {c.reaction && <span className="mr-2">{c.reaction}</span>}
-                          <span className="text-gray-300">{c.content}</span>
-                        </div>
-                      ))}
+                    
+                    <div className="space-y-3 mb-4 max-h-60 overflow-y-auto custom-scrollbar">
+                      {logComments.map(c => {
+                        const commentUser = userDict[c.user_id];
+                        const isOwner = commentUser?.role === 'owner';
+                        const isAdmin = commentUser?.role === 'admin';
+
+                        return (
+                          <div key={c.id} className="bg-gray-800/80 p-3 rounded-lg text-sm border border-gray-700/50">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="bg-black text-white px-2 py-0.5 rounded-md font-bold text-xs border border-gray-600">
+                                @{c.username}
+                              </span>
+                              {isOwner && (
+                                <span className="bg-gradient-to-r from-yellow-400 to-red-500 text-white px-2 py-0.5 rounded text-[10px] font-black tracking-wider uppercase shadow-[0_0_10px_rgba(255,0,0,0.5)]">
+                                  OWNER
+                                </span>
+                              )}
+                              {!isOwner && isAdmin && (
+                                <span className="bg-blue-500/20 text-blue-400 border border-blue-500/50 px-1.5 py-0.5 rounded text-[10px] font-black tracking-wider uppercase">
+                                  ADMIN
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-gray-300 mt-1">
+                              {c.reaction && <span className="mr-2 text-base">{c.reaction}</span>}
+                              {c.content}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                     
                     <div className="flex flex-col gap-2">

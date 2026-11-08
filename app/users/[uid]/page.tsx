@@ -11,15 +11,11 @@ function ProfileContent() {
   const [myGames, setMyGames] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<boolean>(false);
-
-  // 追蹤系統狀態
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
-
-  // 追蹤清單彈窗狀態
   const [showFollowList, setShowFollowList] = useState(false);
   const [followList, setFollowList] = useState<any[]>([]);
   const [followListTitle, setFollowListTitle] = useState('');
@@ -35,22 +31,18 @@ function ProfileContent() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) setCurrentUserId(session.user.id);
 
-    // 1. 取得目標玩家資料
     const { data: userData } = await supabase.from('users').select('*').eq('uid', params.uid).single();
     if (userData) {
       setProfile(userData);
       
-      // 取得該玩家的遊戲
       const { data: gamesData } = await supabase.from('games').select('*').eq('creator', userData.username);
       if (gamesData) setMyGames(gamesData);
 
-      // 2. 取得追蹤數據
       const { count: followers } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', userData.id);
       const { count: following } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', userData.id);
       setFollowersCount(followers || 0);
       setFollowingCount(following || 0);
 
-      // 3. 檢查自己是否已追蹤他
       if (session && session.user.id !== userData.id) {
         const { data: followRecord } = await supabase.from('follows').select('*').eq('follower_id', session.user.id).eq('following_id', userData.id).single();
         if (followRecord) setIsFollowing(true);
@@ -63,18 +55,15 @@ function ProfileContent() {
     fetchUserData();
   }, [params.uid]);
 
-  // 處理追蹤/取消追蹤
   const handleFollowToggle = async () => {
     if (!currentUserId) { router.push('/login'); return; }
     setIsFollowLoading(true);
 
     if (isFollowing) {
-      // 取消追蹤
       await supabase.from('follows').delete().eq('follower_id', currentUserId).eq('following_id', profile.id);
       setIsFollowing(false);
       setFollowersCount(prev => prev - 1);
     } else {
-      // 新增追蹤
       await supabase.from('follows').insert([{ follower_id: currentUserId, following_id: profile.id }]);
       setIsFollowing(true);
       setFollowersCount(prev => prev + 1);
@@ -82,18 +71,15 @@ function ProfileContent() {
     setIsFollowLoading(false);
   };
 
-  // 打開追蹤清單
   const openFollowList = async (type: 'followers' | 'following') => {
     setFollowListTitle(type === 'followers' ? 'Followers' : 'Following');
     setFollowList([]);
     setShowFollowList(true);
 
     if (type === 'followers') {
-      // 查誰追蹤了我
       const { data } = await supabase.from('follows').select('follower_id, users!follows_follower_id_fkey(username, uid)').eq('following_id', profile.id);
       if (data) setFollowList(data.map((d: any) => d.users));
     } else {
-      // 查我追蹤了誰
       const { data } = await supabase.from('follows').select('following_id, users!follows_following_id_fkey(username, uid)').eq('follower_id', profile.id);
       if (data) setFollowList(data.map((d: any) => d.users));
     }
@@ -103,7 +89,10 @@ function ProfileContent() {
   if (!profile) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">User not found.</div>;
 
   const isOwnProfile = currentUserId === profile.id;
-  const isVipActive = profile.vip_expires_at && new Date(profile.vip_expires_at) > new Date();
+  
+  // 🚀 OWNER 與 VIP 邏輯判斷
+  const isOwner = profile.role === 'owner' || profile.uid === '1';
+  const isVipActive = isOwner || (profile.vip_expires_at && new Date(profile.vip_expires_at) > new Date());
   const expiryDate = profile.vip_expires_at ? new Date(profile.vip_expires_at).toLocaleDateString() : '';
   const joinYear = new Date(profile.created_at).getFullYear();
 
@@ -116,7 +105,6 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* 追蹤清單彈窗 */}
       {showFollowList && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
           <div className="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
@@ -151,25 +139,31 @@ function ProfileContent() {
           </div>
           
           <div className="flex-1 text-center md:text-left pt-2 md:pt-0">
+            {/* 🚀 名字與專屬標籤 */}
             <h1 className={`text-3xl md:text-4xl font-bold flex items-center justify-center md:justify-start gap-2 ${isVipActive ? 'text-yellow-400' : 'text-white'}`}>
               {profile.username}
-              {profile.uid === '1' && (
+              
+              {/* 藍勾 (OWNER 或 UID 1) */}
+              {(isOwner || profile.uid === '1') && (
                 <svg className="w-7 h-7 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" /></svg>
               )}
+              
+              {/* VIP 皇冠 */}
               {isVipActive && <span title="VIP" className="text-2xl">👑</span>}
+
+              {/* OWNER 專屬標籤 */}
+              {isOwner && <span className="bg-gradient-to-r from-yellow-500 to-red-600 text-white text-xs px-2 py-0.5 rounded ml-1 font-black tracking-wider shadow-lg">OWNER</span>}
             </h1>
+            
             <p className="text-gray-400 text-lg mt-1">@{profile.username.toLowerCase().replace(/\s+/g, '')}</p>
             
             <div className="flex items-center justify-center md:justify-start gap-4 mt-3 text-sm">
               <button onClick={showToast} className="bg-gray-800/80 hover:bg-gray-700 px-3 py-1 rounded-md backdrop-blur-sm transition"><strong>0</strong> Friends</button>
-              
-              {/* 🚀 真實的追蹤按鈕 */}
               <button onClick={() => openFollowList('followers')} className="bg-gray-800/80 hover:bg-gray-700 px-3 py-1 rounded-md backdrop-blur-sm transition"><strong>{followersCount}</strong> Followers</button>
               <button onClick={() => openFollowList('following')} className="bg-gray-800/80 hover:bg-gray-700 px-3 py-1 rounded-md backdrop-blur-sm transition"><strong>{followingCount}</strong> Following</button>
             </div>
           </div>
 
-          {/* 如果不是自己的主頁，顯示追蹤按鈕 */}
           {!isOwnProfile && currentUserId && (
             <div className="flex gap-3 w-full md:w-auto mt-4 md:mt-0">
               <button 
@@ -235,7 +229,7 @@ function ProfileContent() {
               <h3 className="text-xl font-bold mb-2 flex items-center gap-2">👑 Leo VIP</h3>
               {isVipActive ? (
                 <div className="text-green-400 text-sm bg-green-500/10 p-3 rounded-lg border border-green-500/30 text-center mt-4">
-                  VIP Active until {expiryDate}
+                  VIP Active {isOwner ? '(Lifetime)' : `until ${expiryDate}`}
                 </div>
               ) : (
                 <div className="text-gray-400 text-sm text-center mt-4">Not a VIP member.</div>

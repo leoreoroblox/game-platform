@@ -29,15 +29,10 @@ export default function AdminPage() {
   const [drawerGame, setDrawerGame] = useState<any>(null);
   const [showWelcome, setShowWelcome] = useState(false);
 
-  // 實體深度分析彈窗狀態 (用戶或遊戲)
   const [statsEntity, setStatsEntity] = useState<{ data: any, type: 'user' | 'game' } | null>(null);
-  // 全局單一指標圖表彈窗狀態
   const [selectedMetric, setSelectedMetric] = useState<any>(null);
-
-  // 全局圖表切換
   const [chartType, setChartType] = useState('area');
 
-  // 全站控制狀態
   const [globalCoins, setGlobalCoins] = useState<number | ''>('');
   const [notifyCoins, setNotifyCoins] = useState(true); 
   const [isGloballyUpdating, setIsGloballyUpdating] = useState(false);
@@ -82,7 +77,9 @@ export default function AdminPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
       const { data: userData } = await supabase.from('users').select('role').eq('id', session.user.id).single();
-      if (userData?.role === 'admin') { 
+      
+      // 🚀 允許 admin 和 owner 進入後台
+      if (userData?.role === 'admin' || userData?.role === 'owner') { 
         setIsAdmin(true); 
         fetchData(); 
         setShowWelcome(true);
@@ -93,7 +90,6 @@ export default function AdminPage() {
     checkAdmin();
   }, [router]);
 
-  // 🚀 全服發幣
   const handleGlobalCoins = async () => {
     if (!globalCoins || globalCoins === 0) return;
     if (!confirm(`確定要為全站所有玩家發放 ${globalCoins} 金幣嗎？`)) return;
@@ -110,7 +106,6 @@ export default function AdminPage() {
     } catch (err) { showToast('❌ 發放失敗'); } finally { setIsGloballyUpdating(false); }
   };
 
-  // 🚀 發布跑馬燈
   const handleSaveMarquee = async () => {
     const { error } = await supabase.from('site_settings').update({
       announcement_text: siteSettings.announcement_text,
@@ -124,7 +119,6 @@ export default function AdminPage() {
     if (error) showToast('❌ 跑馬燈儲存失敗'); else showToast('✅ 跑馬燈已發布！');
   };
 
-  // 🚀 啟動維護
   const handleStartMaintenance = async () => {
     const now = new Date();
     let startTime = new Date(now);
@@ -158,7 +152,6 @@ export default function AdminPage() {
     else { showToast('✅ 維護已排程/啟動！'); setShowMaintenanceModal(false); fetchData(); }
   };
 
-  // 🚀 結束維護
   const handleStopMaintenance = async () => {
     const { error } = await supabase.from('site_settings').update({
       maintenance_mode: false, maintenance_start_time: null, maintenance_end_time: null
@@ -169,7 +162,6 @@ export default function AdminPage() {
   if (checkingAuth) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center font-mono">Checking Permissions...</div>;
   if (!isAdmin) return null;
 
-  // ================= 🚀 全局數據計算 =================
   const totalCoins = users.reduce((acc, u) => acc + (u.leo_coins || 0), 0);
   const actionGames = games.filter(g => g.category === 'Action').length;
   const rpgGames = games.filter(g => g.category === 'RPG').length;
@@ -209,12 +201,11 @@ export default function AdminPage() {
     return result;
   };
 
-  // 32 個全局指標
   const statsData = [
     { label: '總註冊用戶', val: users.length, icon: '👥', color: 'text-cyan-400', trend: generateRealTrend(users, true) },
     { label: '總遊戲數量', val: games.length, icon: '🎮', color: 'text-purple-400', trend: generateRealTrend(games, true) },
     { label: '全站金幣總量', val: totalCoins.toLocaleString(), icon: '🪙', color: 'text-yellow-400', trend: generateMockTrend(totalCoins) },
-    { label: '管理員人數', val: users.filter(u => u.role === 'admin').length, icon: '👑', color: 'text-red-400', trend: generateMockTrend(users.filter(u => u.role === 'admin').length) },
+    { label: '管理員人數', val: users.filter(u => u.role === 'admin' || u.role === 'owner').length, icon: '👑', color: 'text-red-400', trend: generateMockTrend(users.filter(u => u.role === 'admin' || u.role === 'owner').length) },
     { label: 'VIP 會員數', val: users.filter(u => u.vip_level === 'VIP').length, icon: '💎', color: 'text-yellow-300', trend: generateMockTrend(users.filter(u => u.vip_level === 'VIP').length) },
     { label: 'Action 遊戲', val: actionGames, icon: '⚔️', color: 'text-orange-400', trend: generateMockTrend(actionGames) },
     { label: 'RPG 遊戲', val: rpgGames, icon: '🧙‍♂️', color: 'text-green-400', trend: generateMockTrend(rpgGames) },
@@ -285,7 +276,6 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex relative overflow-hidden">
       
-      {/* 歡迎動畫 */}
       {showWelcome && (
         <div className="fixed inset-0 z-[99999] bg-gray-950 flex flex-col items-center justify-center animate-[fadeOut_2.5s_ease-in-out_forwards] pointer-events-none">
           <div className="text-6xl mb-6 animate-bounce">👑</div>
@@ -293,18 +283,12 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 彈窗集合 */}
       {toastMsg && <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-2xl z-[9999] animate-pulse font-bold">{toastMsg}</div>}
       {drawerUser && <AdminUserDrawer user={drawerUser} onClose={() => setDrawerUser(null)} onRefresh={fetchData} />}
       {drawerGame && <AdminGameDrawer game={drawerGame} onClose={() => setDrawerGame(null)} onRefresh={fetchData} />}
       {selectedMetric && <MetricDetailModal metric={selectedMetric} onClose={() => setSelectedMetric(null)} />}
-      
-      {/* 🚀 實體深度分析彈窗 */}
-      {statsEntity && (
-        <EntityStatsModal entity={statsEntity.data} type={statsEntity.type} onClose={() => setStatsEntity(null)} />
-      )}
+      {statsEntity && <EntityStatsModal entity={statsEntity.data} type={statsEntity.type} onClose={() => setStatsEntity(null)} />}
 
-      {/* 維護彈窗 */}
       {showMaintenanceModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
           <div className="bg-gray-800 border border-gray-700 rounded-2xl p-8 w-full max-w-2xl shadow-2xl">
@@ -363,7 +347,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 左側邊欄 */}
       <div className="w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-10">
         <div className="p-6 border-b border-gray-800"><h2 className="text-xl font-bold text-cyan-400 flex items-center gap-2"><img src="/logo.png" alt="Logo" className="h-6" /> 控制台</h2></div>
         <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-1 px-3">
@@ -379,7 +362,6 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* 右側主要內容 */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden bg-gray-900 z-10">
         <header className="h-16 bg-gray-950 border-b border-gray-800 flex items-center justify-between px-8">
           <div className="text-gray-400 capitalize font-bold">{activeTab}</div>
@@ -387,7 +369,6 @@ export default function AdminPage() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-8">
-          {/* 數據總覽 */}
           {activeTab === 'dashboard' && (
              <div>
                <div className="flex justify-between items-end mb-6">
@@ -426,7 +407,6 @@ export default function AdminPage() {
              </div>
           )}
 
-          {/* 用戶管理 (加入數據分析按鈕) */}
           {activeTab === 'users' && (
              <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
                <table className="w-full text-left text-sm text-gray-400">
@@ -446,7 +426,6 @@ export default function AdminPage() {
              </div>
           )}
           
-          {/* 遊戲管理 (加入數據分析按鈕) */}
           {activeTab === 'games' && (
              <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
                <table className="w-full text-left text-sm text-gray-400">
@@ -465,12 +444,10 @@ export default function AdminPage() {
              </div>
           )}
           
-          {/* 更新日誌 */}
           {activeTab === 'changelog' && (
             <div className="max-w-6xl"><h1 className="text-2xl font-bold mb-8">版本更新日誌管理</h1><AdminChangelog /></div>
           )}
 
-          {/* 系統與全站控制 */}
           {activeTab === 'global' && (
             <div className="max-w-6xl space-y-8">
               <h1 className="text-2xl font-bold mb-6">系統與全站控制</h1>
@@ -538,10 +515,6 @@ export default function AdminPage() {
           )}
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes fadeOut { 0% { opacity: 1; visibility: visible; } 80% { opacity: 1; visibility: visible; } 100% { opacity: 0; visibility: hidden; } }
-      `}</style>
     </div>
   );
 }
