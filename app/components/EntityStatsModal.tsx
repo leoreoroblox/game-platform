@@ -5,14 +5,15 @@ import MetricDetailModal from './MetricDetailModal';
 export default function EntityStatsModal({ entity, type, onClose }: { entity: any, type: 'user' | 'game', onClose: () => void }) {
   const [selectedMetric, setSelectedMetric] = useState<any>(null);
 
-  // 使用實體 ID 或創建時間作為種子，生成穩定的隨機數（確保每次打開數據一樣）
-  const seed = entity.id ? entity.id.charCodeAt(0) + (entity.id.charCodeAt(1) || 0) : 123;
+  // 🚀 修復 ID 錯誤：兼容字串(UUID)與數字(bigint)
+  const idStr = String(entity.id || '123');
+  const seed = idStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+
   const getRandom = (min: number, max: number) => {
     const x = Math.sin(seed + min) * 10000;
     return Math.floor((x - Math.floor(x)) * (max - min + 1)) + min;
   };
 
-  // 生成 7 天趨勢數據
   const generateTrend = (baseValue: number) => {
     const result = [];
     const today = new Date();
@@ -20,16 +21,15 @@ export default function EntityStatsModal({ entity, type, onClose }: { entity: an
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
-      // 模擬在基準值附近浮動
-      const val = Math.max(0, baseValue + getRandom(-Math.floor(baseValue * 0.3), Math.floor(baseValue * 0.5)));
-      result.push({ name: dateStr, value: val });
+      const minOffset = -Math.floor(baseValue * 0.3);
+      const maxOffset = Math.floor(baseValue * 0.5);
+      const val = Math.max(0, baseValue + getRandom(isNaN(minOffset) ? 0 : minOffset, isNaN(maxOffset) ? 0 : maxOffset));
+      result.push({ name: dateStr, value: isNaN(val) ? 0 : val });
     }
-    // 最後一天設為真實基準值（如果是真實數據）
-    result[6].value = baseValue;
+    result[6].value = isNaN(baseValue) ? 0 : baseValue;
     return result;
   };
 
-  // 生成 30 個指標
   const generateStats = () => {
     if (type === 'user') {
       const coins = entity.leo_coins || 0;
@@ -54,7 +54,7 @@ export default function EntityStatsModal({ entity, type, onClose }: { entity: an
         { label: '連續簽到天數', val: getRandom(0, 30), icon: '🔥', color: 'text-orange-500' },
         { label: '註冊天數', val: `${daysSinceJoin} 天`, icon: '📅', color: 'text-gray-300' },
         { label: '平均遊玩時長 (分)', val: getRandom(10, 120), icon: '⏳', color: 'text-blue-300' },
-        { label: '當前設備 (PC/手機)', val: getRandom(0, 1) ? 'PC' : 'Mobile', icon: '💻', color: 'text-gray-300' },
+        { label: '當前設備', val: getRandom(0, 1) ? 'PC' : 'Mobile', icon: '💻', color: 'text-gray-300' },
         { label: '被檢舉次數', val: getRandom(0, 3), icon: '🚩', color: 'text-red-500' },
         { label: '封禁狀態', val: entity.is_banned ? '已封禁' : '正常', icon: '🛡️', color: entity.is_banned ? 'text-red-500' : 'text-green-500' },
       ];
@@ -92,10 +92,7 @@ export default function EntityStatsModal({ entity, type, onClose }: { entity: an
   return (
     <>
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9998] p-4 animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
-        <div 
-          className="bg-gray-900 border border-gray-700 rounded-2xl p-8 w-full max-w-6xl shadow-2xl flex flex-col max-h-[90vh]" 
-          onClick={e => e.stopPropagation()}
-        >
+        <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 w-full max-w-6xl shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
           <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
             <div>
               <h2 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -125,7 +122,6 @@ export default function EntityStatsModal({ entity, type, onClose }: { entity: an
         </div>
       </div>
 
-      {/* 二級彈窗：圖表 */}
       {selectedMetric && (
         <MetricDetailModal metric={selectedMetric} onClose={() => setSelectedMetric(null)} />
       )}
