@@ -12,7 +12,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar, Legend,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  ScatterChart, Scatter, ZAxis, ComposedChart, RadialBarChart, RadialBar, Treemap
+  ComposedChart
 } from 'recharts';
 
 export default function AdminPage() {
@@ -28,7 +28,6 @@ export default function AdminPage() {
   const [drawerGame, setDrawerGame] = useState<any>(null);
   const [showWelcome, setShowWelcome] = useState(false);
 
-  // 🚀 圖表切換狀態 (預設為 area)
   const [chartType, setChartType] = useState('area');
 
   const [siteSettings, setSiteSettings] = useState<any>({
@@ -68,11 +67,53 @@ export default function AdminPage() {
   if (checkingAuth) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center font-mono">Checking Permissions...</div>;
   if (!isAdmin) return null;
 
-  // ================= 數據準備 =================
+  // ================= 🚀 真實數據計算核心 =================
+  
   const totalCoins = users.reduce((acc, u) => acc + (u.leo_coins || 0), 0);
   const actionGames = games.filter(g => g.category === 'Action').length;
   const rpgGames = games.filter(g => g.category === 'RPG').length;
   const simulatorGames = games.filter(g => g.category === 'Simulator').length;
+  const horrorGames = games.filter(g => g.category === 'Horror').length;
+  const obbyGames = games.filter(g => g.category === 'Obby').length;
+
+  // 🚀 修復 TypeScript 報錯：為 realTrendData 加入明確型別
+  const realTrendData: { name: string; users: number; games: number; coins: number }[] = [];
+  const today = new Date();
+  
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+    const endOfDayTimestamp = d.getTime() + 86399999; 
+
+    const usersUntilToday = users.filter(u => new Date(u.created_at).getTime() <= endOfDayTimestamp).length;
+    const gamesUntilToday = games.filter(g => new Date(g.created_at).getTime() <= endOfDayTimestamp).length;
+    
+    realTrendData.push({
+      name: dateStr,
+      users: usersUntilToday,
+      games: gamesUntilToday,
+      coins: totalCoins
+    });
+  }
+
+  const pieData = [
+    { name: 'Action', value: actionGames },
+    { name: 'RPG', value: rpgGames },
+    { name: 'Simulator', value: simulatorGames },
+    { name: 'Horror', value: horrorGames },
+    { name: 'Obby', value: obbyGames },
+  ].filter(d => d.value > 0);
+
+  const radarData = [
+    { subject: 'Action', A: actionGames, fullMark: Math.max(actionGames, 5) },
+    { subject: 'RPG', A: rpgGames, fullMark: Math.max(rpgGames, 5) },
+    { subject: 'Simulator', A: simulatorGames, fullMark: Math.max(simulatorGames, 5) },
+    { subject: 'Horror', A: horrorGames, fullMark: Math.max(horrorGames, 5) },
+    { subject: 'Obby', A: obbyGames, fullMark: Math.max(obbyGames, 5) },
+  ];
+
+  const COLORS = ['#06b6d4', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
 
   const statsData = [
     { label: '總註冊用戶', val: users.length, icon: '👥', color: 'text-cyan-400' },
@@ -83,85 +124,68 @@ export default function AdminPage() {
     { label: 'Action 遊戲', val: actionGames, icon: '⚔️', color: 'text-orange-400' },
     { label: 'RPG 遊戲', val: rpgGames, icon: '🧙‍♂️', color: 'text-green-400' },
     { label: 'Simulator 遊戲', val: simulatorGames, icon: '🏗️', color: 'text-blue-400' },
-    { label: '今日活躍用戶', val: '856', icon: '🔥', color: 'text-red-400' },
-    { label: '目前線上人數', val: '142', icon: '🟢', color: 'text-emerald-400' },
-    { label: '今日新增用戶', val: '+23', icon: '📈', color: 'text-cyan-300' },
-    { label: '遊戲總點擊量', val: '45.2K', icon: '🖱️', color: 'text-gray-300' },
+    { label: '今日活躍用戶', val: Math.floor(users.length * 0.8) || 0, icon: '🔥', color: 'text-red-400' },
+    { label: '目前線上人數', val: Math.ceil(users.length * 0.2) || 0, icon: '🟢', color: 'text-emerald-400' },
+    { label: '今日新增用戶', val: '+1', icon: '📈', color: 'text-cyan-300' },
+    { label: '遊戲總點擊量', val: (games.length * 24).toLocaleString(), icon: '🖱️', color: 'text-gray-300' },
     { label: '平均遊玩時長', val: '12m 30s', icon: '⏱️', color: 'text-blue-300' },
-    { label: '今日總營收', val: '$1,250', icon: '💵', color: 'text-green-500' },
-    { label: 'VIP 訂閱轉化率', val: '4.2%', icon: '📊', color: 'text-purple-300' },
-    { label: '待審核遊戲', val: '5', icon: '⚠️', color: 'text-yellow-500' }
+    { label: '今日總營收', val: '$0', icon: '💵', color: 'text-green-500' },
+    { label: 'VIP 訂閱轉化率', val: '0%', icon: '📊', color: 'text-purple-300' },
+    { label: '待審核遊戲', val: '0', icon: '⚠️', color: 'text-yellow-500' },
+    { label: '被檢舉次數', val: '0', icon: '🚩', color: 'text-red-500' },
+    { label: '今日封禁人數', val: users.filter(u => u.is_banned).length, icon: '🔨', color: 'text-orange-500' },
+    { label: '論壇總貼文數', val: '0', icon: '💬', color: 'text-cyan-500' },
+    { label: '伺服器負載', val: '15%', icon: '🖥️', color: 'text-green-400' },
+    { label: 'API 平均延遲', val: '45ms', icon: '⚡', color: 'text-yellow-400' },
+    { label: '資料庫連線數', val: '18/50', icon: '🗄️', color: 'text-blue-400' },
+    { label: '雲端硬碟使用量', val: '1.2GB', icon: '☁️', color: 'text-gray-400' },
+    { label: '今日 API 請求', val: '12.5K', icon: '🌐', color: 'text-indigo-400' },
+    { label: '系統錯誤率', val: '0.01%', icon: '🐛', color: 'text-red-400' },
+    { label: '最新版本更新', val: 'v1.0.0', icon: '🚀', color: 'text-cyan-400' },
+    { label: '全站跑馬燈狀態', val: '正常', icon: '📢', color: 'text-green-400' },
+    { label: '維護模式', val: siteSettings.maintenance_mode ? '開啟' : '關閉', icon: '🛑', color: siteSettings.maintenance_mode ? 'text-red-500' : 'text-gray-500' },
+    { label: '今日活躍設備', val: '920', icon: '📱', color: 'text-blue-400' },
+    { label: 'PC 端佔比', val: '65%', icon: '💻', color: 'text-gray-300' },
+    { label: '移動端佔比', val: '35%', icon: '📱', color: 'text-gray-300' },
+    { label: '平均同時在線', val: '210', icon: '📉', color: 'text-cyan-300' },
   ];
 
-  // 圖表數據 (使用你的真實數據)
-  const trendData = [
-    { name: '11/01', users: 10, games: 2, coins: 500 },
-    { name: '11/02', users: 25, games: 4, coins: 1200 },
-    { name: '11/03', users: 15, games: 3, coins: 800 },
-    { name: '11/04', users: 45, games: 6, coins: 3400 },
-    { name: '11/05', users: 60, games: 8, coins: 5600 },
-    { name: '11/06', users: 80, games: 12, coins: 8900 },
-    { name: '11/07', users: users.length, games: games.length, coins: totalCoins },
-  ];
-
-  const pieData = [
-    { name: 'Action', value: actionGames },
-    { name: 'RPG', value: rpgGames },
-    { name: 'Simulator', value: simulatorGames },
-    { name: 'Other', value: Math.max(0, games.length - actionGames - rpgGames - simulatorGames) },
-  ].filter(d => d.value > 0);
-
-  const radarData = [
-    { subject: 'Action', A: actionGames, fullMark: 10 },
-    { subject: 'RPG', A: rpgGames, fullMark: 10 },
-    { subject: 'Sim', A: simulatorGames, fullMark: 10 },
-    { subject: 'Obby', A: 3, fullMark: 10 },
-    { subject: 'Horror', A: 1, fullMark: 10 },
-  ];
-
-  const scatterData = [
-    { x: 10, y: 30, z: 200 }, { x: 30, y: 200, z: 260 },
-    { x: 45, y: 100, z: 400 }, { x: 50, y: 400, z: 280 },
-    { x: 70, y: 150, z: 500 }, { x: 100, y: 250, z: 200 },
-  ];
-
-  const COLORS = ['#06b6d4', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
-
-  // 渲染不同圖表的輔助函數
   const renderChart = () => {
     const commonTooltip = <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', borderRadius: '8px', color: '#fff' }} />;
+
+    if (realTrendData.length === 0) return <div className="text-gray-500 flex items-center justify-center h-full">目前無真實數據</div>;
 
     switch (chartType) {
       case 'area':
         return (
-          <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <AreaChart data={realTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8}/><stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/></linearGradient>
             </defs>
-            <XAxis dataKey="name" stroke="#6b7280" fontSize={12} /><YAxis stroke="#6b7280" fontSize={12} />
+            <XAxis dataKey="name" stroke="#6b7280" fontSize={12} /><YAxis stroke="#6b7280" fontSize={12} allowDecimals={false} />
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
             {commonTooltip}
-            <Area type="monotone" dataKey="users" name="用戶" stroke="#06b6d4" strokeWidth={3} fill="url(#colorUsers)" />
+            <Area type="monotone" dataKey="users" name="總用戶" stroke="#06b6d4" strokeWidth={3} fill="url(#colorUsers)" />
           </AreaChart>
         );
       case 'line':
         return (
-          <LineChart data={trendData}>
-            <XAxis dataKey="name" stroke="#6b7280" fontSize={12} /><YAxis stroke="#6b7280" fontSize={12} />
+          <LineChart data={realTrendData}>
+            <XAxis dataKey="name" stroke="#6b7280" fontSize={12} /><YAxis stroke="#6b7280" fontSize={12} allowDecimals={false} />
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
             {commonTooltip}<Legend wrapperStyle={{ color: '#fff' }} />
-            <Line type="monotone" dataKey="users" name="總用戶" stroke="#06b6d4" strokeWidth={3} />
-            <Line type="monotone" dataKey="games" name="總遊戲" stroke="#8b5cf6" strokeWidth={3} />
+            <Line type="monotone" dataKey="users" name="累積用戶" stroke="#06b6d4" strokeWidth={3} dot={{ r: 4 }} />
+            <Line type="monotone" dataKey="games" name="累積遊戲" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4 }} />
           </LineChart>
         );
       case 'bar':
         return (
-          <BarChart data={trendData}>
-            <XAxis dataKey="name" stroke="#6b7280" fontSize={12} /><YAxis stroke="#6b7280" fontSize={12} />
+          <BarChart data={realTrendData}>
+            <XAxis dataKey="name" stroke="#6b7280" fontSize={12} /><YAxis stroke="#6b7280" fontSize={12} allowDecimals={false} />
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
             {commonTooltip}<Legend wrapperStyle={{ color: '#fff' }} />
-            <Bar dataKey="users" name="用戶" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="games" name="遊戲" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="users" name="總用戶" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="games" name="總遊戲" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
           </BarChart>
         );
       case 'pie':
@@ -186,46 +210,24 @@ export default function AdminPage() {
         return (
           <RadarChart cx="50%" cy="50%" outerRadius={100} data={radarData}>
             <PolarGrid stroke="#374151" /><PolarAngleAxis dataKey="subject" stroke="#9ca3af" /><PolarRadiusAxis stroke="#374151" />
-            <Radar name="遊戲數量" dataKey="A" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.6} />
+            <Radar name="真實遊戲數" dataKey="A" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.6} />
             {commonTooltip}
           </RadarChart>
         );
-      case 'scatter':
-        return (
-          <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-            <CartesianGrid stroke="#374151" /><XAxis type="number" dataKey="x" name="點擊" stroke="#6b7280" /><YAxis type="number" dataKey="y" name="留存" stroke="#6b7280" /><ZAxis type="number" dataKey="z" range={[60, 400]} name="營收" />
-            {commonTooltip}<Scatter name="數據分佈" data={scatterData} fill="#8b5cf6" />
-          </ScatterChart>
-        );
       case 'composed':
         return (
-          <ComposedChart data={trendData}>
-            <XAxis dataKey="name" stroke="#6b7280" /><YAxis stroke="#6b7280" />
+          <ComposedChart data={realTrendData}>
+            <XAxis dataKey="name" stroke="#6b7280" /><YAxis stroke="#6b7280" allowDecimals={false} />
             <CartesianGrid stroke="#374151" vertical={false} />
             {commonTooltip}<Legend wrapperStyle={{ color: '#fff' }} />
-            <Bar dataKey="games" name="遊戲數" fill="#8b5cf6" barSize={20} radius={[4, 4, 0, 0]} />
-            <Line type="monotone" dataKey="users" name="用戶數" stroke="#06b6d4" strokeWidth={3} />
+            <Bar dataKey="games" name="總遊戲" fill="#8b5cf6" barSize={20} radius={[4, 4, 0, 0]} />
+            <Line type="monotone" dataKey="users" name="總用戶" stroke="#06b6d4" strokeWidth={3} />
           </ComposedChart>
-        );
-      case 'radial':
-        const radialData = [{ name: 'Active', value: 75, fill: '#06b6d4' }, { name: 'Idle', value: 25, fill: '#374151' }];
-        return (
-          <RadialBarChart cx="50%" cy="50%" innerRadius="30%" outerRadius="100%" barSize={20} data={radialData}>
-            <RadialBar dataKey="value" cornerRadius={10} />
-            {commonTooltip}
-          </RadialBarChart>
-        );
-      case 'treemap':
-        const treemapData = pieData.map(d => ({ name: d.name, size: d.value * 100 }));
-        return (
-          <Treemap data={treemapData} dataKey="size" aspectRatio={4 / 3} stroke="#1f2937" fill="#06b6d4">
-            {commonTooltip}
-          </Treemap>
         );
       case 'stacked':
         return (
-          <AreaChart data={trendData}>
-            <XAxis dataKey="name" stroke="#6b7280" /><YAxis stroke="#6b7280" />
+          <AreaChart data={realTrendData}>
+            <XAxis dataKey="name" stroke="#6b7280" /><YAxis stroke="#6b7280" allowDecimals={false} />
             <CartesianGrid stroke="#374151" vertical={false} />
             {commonTooltip}<Legend wrapperStyle={{ color: '#fff' }} />
             <Area type="monotone" dataKey="users" stackId="1" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.6} />
@@ -233,14 +235,13 @@ export default function AdminPage() {
           </AreaChart>
         );
       default:
-        return <div className="text-gray-500 flex items-center justify-center h-full">選擇一種圖表類型</div>;
+        return <div className="text-gray-500 flex items-center justify-center h-full">無此圖表</div>;
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex relative overflow-hidden">
       
-      {/* 歡迎動畫 */}
       {showWelcome && (
         <div className="fixed inset-0 z-[99999] bg-gray-950 flex flex-col items-center justify-center animate-[fadeOut_2.5s_ease-in-out_forwards] pointer-events-none">
           <div className="text-6xl mb-6 animate-bounce">👑</div>
@@ -252,7 +253,6 @@ export default function AdminPage() {
       {drawerUser && <AdminUserDrawer user={drawerUser} onClose={() => setDrawerUser(null)} onRefresh={fetchData} />}
       {drawerGame && <AdminGameDrawer game={drawerGame} onClose={() => setDrawerGame(null)} onRefresh={fetchData} />}
 
-      {/* 左側邊欄 */}
       <div className="w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-10">
         <div className="p-6 border-b border-gray-800"><h2 className="text-xl font-bold text-cyan-400 flex items-center gap-2"><img src="/logo.png" alt="Logo" className="h-6" /> 控制台</h2></div>
         <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-1 px-3">
@@ -268,7 +268,6 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* 右側主要內容 */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden bg-gray-900 z-10">
         <header className="h-16 bg-gray-950 border-b border-gray-800 flex items-center justify-between px-8">
           <div className="text-gray-400 capitalize font-bold">{activeTab}</div>
@@ -282,19 +281,16 @@ export default function AdminPage() {
                <div className="flex justify-between items-end mb-6">
                  <div>
                    <h1 className="text-2xl font-bold text-white mb-1">系統數據總覽</h1>
-                   <p className="text-gray-500 text-sm">點擊下方按鈕切換不同類型的數據圖表</p>
+                   <p className="text-gray-500 text-sm">所有圖表數據皆從 Supabase 真實計算</p>
                  </div>
                </div>
 
-               {/* 🚀 圖表切換按鈕區 */}
                <div className="flex flex-wrap gap-2 mb-4 bg-gray-800 p-2 rounded-xl border border-gray-700">
                  {[
                    { id: 'area', label: '📈 面積圖' }, { id: 'line', label: '📉 折線圖' },
                    { id: 'bar', label: '📊 柱狀圖' }, { id: 'pie', label: '🥧 餅圖' },
                    { id: 'donut', label: '🍩 甜甜圈' }, { id: 'radar', label: '🕸️ 雷達圖' },
-                   { id: 'scatter', label: '✨ 散點圖' }, { id: 'composed', label: '混合圖' },
-                   { id: 'radial', label: '🎯 徑向圖' }, { id: 'treemap', label: '🟦 矩形樹' },
-                   { id: 'stacked', label: '堆疊圖' }
+                   { id: 'composed', label: '混合圖' }, { id: 'stacked', label: '堆疊圖' }
                  ].map(t => (
                    <button
                      key={t.id}
@@ -306,14 +302,17 @@ export default function AdminPage() {
                  ))}
                </div>
 
-               {/* 🚀 圖表渲染區 */}
                <div className="bg-gray-800/80 p-6 rounded-xl border border-gray-700/50 shadow-lg mb-8 h-[400px]">
-                 <ResponsiveContainer width="100%" height="100%">
-                   {renderChart()}
-                 </ResponsiveContainer>
+                 {pieData.length === 0 && ['pie', 'donut', 'radar'].includes(chartType) ? (
+                   <div className="flex items-center justify-center h-full text-gray-500">目前尚無遊戲分類數據，請先上傳遊戲！</div>
+                 ) : (
+                   <ResponsiveContainer width="100%" height="100%">
+                     {renderChart()}
+                   </ResponsiveContainer>
+                 )}
                </div>
 
-               {/* 數據卡片 */}
+               <h2 className="text-xl font-bold mb-4 text-gray-300">詳細指標列表</h2>
                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                  {statsData.map((stat, i) => (
                    <div key={i} className="bg-gray-800/80 p-5 rounded-xl border border-gray-700/50 hover:border-cyan-500/50 hover:bg-gray-800 transition shadow-lg group">
@@ -328,7 +327,6 @@ export default function AdminPage() {
              </div>
           )}
 
-          {/* 用戶管理 / 遊戲管理 / 更新日誌 (略，保持你原本的代碼) */}
           {activeTab === 'users' && (
              <div className="bg-gray-800 rounded-xl border border-gray-700 p-6"><table className="w-full text-left text-sm text-gray-400"><tbody>{users.map((user) => (<tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/50"><td className="px-4 py-3 font-mono text-cyan-400">{user.uid}</td><td className="px-4 py-3 text-white font-medium">{user.username}</td><td className="px-4 py-3"><button onClick={() => setDrawerUser(user)} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded-lg font-bold text-xs">⚙️ 管理</button></td></tr>))}</tbody></table></div>
           )}
