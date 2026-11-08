@@ -4,6 +4,9 @@ import Link from 'next/link';
 import GameCard from './components/GameCard';
 import { supabase } from '../lib/supabase';
 
+// 🚀 關鍵修復：告訴 Next.js 此頁面允許阻擋導航
+export const instant = false;
+
 function ExploreContent() {
   const [games, setGames] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
