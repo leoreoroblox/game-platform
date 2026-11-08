@@ -59,10 +59,10 @@ export default function UpdateNotifier() {
 
           <div className="flex gap-3">
             <button onClick={handleClose} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-xl transition border border-gray-700">
-              關閉
+              Close
             </button>
             <Link href="/changelog" onClick={handleClose} className="flex-1 text-center bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-xl transition shadow-[0_0_15px_rgba(0,255,204,0.3)]">
-              查看歷史更新
+              View Changelog
             </Link>
           </div>
         </div>

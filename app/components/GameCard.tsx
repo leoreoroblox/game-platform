@@ -12,16 +12,17 @@ const stringToColor = (str: string) => {
 };
 
 export default function GameCard({ id, title, creator, players, cover_url }: { id: string, title: string, creator: string, players: string, cover_url?: string }) {
-  // 🚀 新增：偵測圖片是否載入失敗
   const [imgError, setImgError] = useState(false);
-
-  // 判斷是否有「有效」的封面
   const hasCover = cover_url && cover_url.trim() !== '' && cover_url !== '1' && cover_url !== 'https://via.placeholder.com/400x200?text=No+Cover' && !imgError;
   const bgColor = stringToColor(title);
 
   return (
-    <Link href={`/game/${id}`} className="block group">
-      <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 hover:border-cyan-400 transition cursor-pointer shadow-lg hover:shadow-[0_0_20px_rgba(0,255,204,0.2)]">
+    <Link 
+      href={`/game/${id}`} 
+      // 🚀 加入 active:scale-95 讓卡片被點擊時有下沉回饋
+      className="block group active:scale-[0.97] transition-transform duration-300"
+    >
+      <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 hover:border-cyan-400 transition-all duration-300 shadow-lg hover:shadow-[0_10px_30px_-10px_rgba(0,255,204,0.2)] hover:-translate-y-1">
         
         {/* 封面圖區塊 */}
         <div className="h-40 relative overflow-hidden">
@@ -29,12 +30,12 @@ export default function GameCard({ id, title, creator, players, cover_url }: { i
             <img 
               src={cover_url} 
               alt={title} 
-              onError={() => setImgError(true)} // 🚀 如果破圖，立刻切換成漸層
-              className="w-full h-full object-cover group-hover:scale-105 transition duration-500" 
+              onError={() => setImgError(true)} 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
             />
           ) : (
             <div 
-              className="w-full h-full flex items-center justify-center group-hover:scale-105 transition duration-500"
+              className="w-full h-full flex items-center justify-center group-hover:scale-105 transition-transform duration-500"
               style={{ background: `linear-gradient(135deg, ${bgColor}, #111827)` }}
             >
               <span className="text-6xl opacity-50 drop-shadow-lg">🎮</span>
@@ -44,7 +45,7 @@ export default function GameCard({ id, title, creator, players, cover_url }: { i
         </div>
 
         <div className="p-4 relative">
-          <h3 className="text-xl font-bold text-white mb-1 group-hover:text-cyan-400 transition truncate">{title}</h3>
+          <h3 className="text-xl font-bold text-white mb-1 group-hover:text-cyan-400 transition-colors truncate">{title}</h3>
           <p className="text-sm text-gray-400 mb-3 truncate">By {creator}</p>
           <div className="flex justify-between items-center text-sm">
             <span className="text-cyan-400 font-medium flex items-center gap-1">

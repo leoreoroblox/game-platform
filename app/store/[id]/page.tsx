@@ -2,7 +2,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 
 function StoreItemContent() {
   const params = useParams();
@@ -67,7 +66,7 @@ function StoreItemContent() {
   return (
     <div className="min-h-screen bg-gray-900 text-white pt-10 pb-20 px-4 md:px-8">
       <div className="max-w-6xl mx-auto">
-        <button onClick={() => router.push('/store')} className="text-gray-400 hover:text-white mb-6 inline-block font-bold transition">← Back to Catalog</button>
+        <button onClick={() => router.push('/store')} className="text-gray-400 hover:text-white mb-6 inline-block font-bold transition active:scale-95">← Back to Catalog</button>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           <div className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl relative">
@@ -91,10 +90,11 @@ function StoreItemContent() {
 
               {message && <p className="text-center text-sm mb-4 text-cyan-300 font-bold bg-cyan-900/30 py-2 rounded-lg">{message}</p>}
 
+              {/* 🚀 套用按鈕點擊反饋 */}
               <button 
                 onClick={handlePurchase}
                 disabled={buying}
-                className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-600 text-white font-bold py-4 rounded-xl transition shadow-[0_0_20px_rgba(0,255,204,0.3)] hover:shadow-[0_0_30px_rgba(0,255,204,0.6)] text-lg mb-3"
+                className="w-full bg-cyan-600 text-white font-bold py-4 rounded-xl text-lg mb-3 btn-primary disabled:opacity-50 disabled:active:scale-100"
               >
                 {buying ? 'Processing...' : 'Buy Now'}
               </button>

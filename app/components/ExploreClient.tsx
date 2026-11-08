@@ -42,10 +42,11 @@ export default function ExploreClient() {
         </p>
         
         <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-          <button className="w-full md:w-auto bg-cyan-600 hover:bg-cyan-500 text-white px-8 py-4 rounded-xl font-bold text-lg transition shadow-[0_0_20px_rgba(0,255,204,0.4)] hover:shadow-[0_0_30px_rgba(0,255,204,0.8)]">
+          {/* 🚀 套用高級按鈕樣式 */}
+          <button className="w-full md:w-auto bg-cyan-600 text-white px-8 py-4 rounded-xl font-bold text-lg btn-primary">
             Download Client
           </button>
-          <button className="w-full md:w-auto bg-gray-800 hover:bg-gray-700 text-white px-8 py-4 rounded-xl font-bold text-lg border border-gray-700 transition">
+          <button className="w-full md:w-auto bg-gray-800 text-white px-8 py-4 rounded-xl font-bold text-lg btn-secondary">
             Learn More
           </button>
         </div>
@@ -58,7 +59,7 @@ export default function ExploreClient() {
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-5 py-2 rounded-full font-bold text-sm whitespace-nowrap transition ${
+              className={`px-5 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-200 active:scale-95 ${
                 activeCategory === cat 
                   ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(0,255,204,0.4)]' 
                   : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'

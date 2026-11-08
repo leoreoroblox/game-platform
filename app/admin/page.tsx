@@ -25,17 +25,12 @@ export default function AdminPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [games, setGames] = useState<any[]>([]);
   const [toastMsg, setToastMsg] = useState('');
-  
-  // 抽屜與彈窗狀態
   const [drawerUser, setDrawerUser] = useState<any>(null);
   const [drawerGame, setDrawerGame] = useState<any>(null);
   const [statsEntity, setStatsEntity] = useState<{ data: any, type: 'user' | 'game' } | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<any>(null);
-
-  // 全局圖表切換
   const [chartType, setChartType] = useState('area');
 
-  // 全站控制狀態
   const [globalCoins, setGlobalCoins] = useState<number | ''>('');
   const [notifyCoins, setNotifyCoins] = useState(true); 
   const [isGloballyUpdating, setIsGloballyUpdating] = useState(false);
@@ -47,10 +42,9 @@ export default function AdminPage() {
     maintenance_mode: false, maintenance_type: 'Scheduled Maintenance',
     maintenance_message: 'Leo Game is currently under maintenance.',
     maintenance_pre_warning: false, pre_warning_minutes: 10,
-    maintenance_notice: '' // 🚀 專屬公告
+    maintenance_notice: '' 
   });
 
-  // 維護彈窗狀態
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [startImmediately, setStartImmediately] = useState(true); 
   const [startDelayYears, setStartDelayYears] = useState(0);
@@ -72,7 +66,6 @@ export default function AdminPage() {
     const { data: usersData } = await supabase.from('users').select('*').order('created_at', { ascending: false });
     const { data: gamesData } = await supabase.from('games').select('*').order('created_at', { ascending: false });
     const { data: settingsData } = await supabase.from('site_settings').select('*').eq('id', 1).single();
-    
     if (usersData) setUsers(usersData);
     if (gamesData) setGames(gamesData);
     if (settingsData) setSiteSettings(settingsData);
@@ -82,47 +75,32 @@ export default function AdminPage() {
     async function checkAdmin() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/'); return; }
-      
       const { data: userData } = await supabase.from('users').select('role').eq('id', session.user.id).single();
-      
-      // 允許 admin 和 owner 進入
       if (userData?.role === 'admin' || userData?.role === 'owner') { 
         setIsAdmin(true); 
         fetchData(); 
-      } else { 
-        router.push('/'); 
-      }
+      } else { router.push('/'); }
       setCheckingAuth(false);
     }
     checkAdmin();
   }, [router]);
 
-  // 🚀 全服發幣
   const handleGlobalCoins = async () => {
     if (!globalCoins || globalCoins === 0) return;
     if (!confirm(`確定要為全站所有玩家發放 ${globalCoins} 金幣嗎？`)) return;
-    
     setIsGloballyUpdating(true);
     try {
       await Promise.all(users.map(u => supabase.from('users').update({ leo_coins: (u.leo_coins || 0) + globalCoins }).eq('id', u.id)));
-      
       if (notifyCoins) {
         await supabase.from('site_settings').update({
           announcement_text: `🎉 感謝全服玩家支持！管理員已向大家發放 ${globalCoins} Leo Coins！`,
           announcement_bg_color: '#eab308', announcement_text_color: '#000000', announcement_speed: 15,
         }).eq('id', 1);
       }
-      showToast(`✅ 已成功為全服玩家發放 ${globalCoins} 金幣！`); 
-      setGlobalCoins(''); 
-      fetchData();
-    } catch (err) { 
-      showToast('❌ 發放失敗'); 
-    } finally { 
-      setIsGloballyUpdating(false); 
-    }
+      showToast(`✅ 已成功為全服玩家發放 ${globalCoins} 金幣！`); setGlobalCoins(''); fetchData();
+    } catch (err) { showToast('❌ 發放失敗'); } finally { setIsGloballyUpdating(false); }
   };
 
-  // 🚀 發布跑馬燈
   const handleSaveMarquee = async () => {
     const { error } = await supabase.from('site_settings').update({
       announcement_text: siteSettings.announcement_text,
@@ -136,7 +114,13 @@ export default function AdminPage() {
     if (error) showToast('❌ 跑馬燈儲存失敗'); else showToast('✅ 跑馬燈已發布！');
   };
 
-  // 🚀 啟動維護
+  const handleSaveMaintenanceNotice = async () => {
+    const { error } = await supabase.from('site_settings').update({
+      maintenance_notice: siteSettings.maintenance_notice
+    }).eq('id', 1);
+    if (error) showToast('❌ 公告儲存失敗'); else showToast('✅ 維護公告已即時更新！');
+  };
+
   const handleStartMaintenance = async () => {
     const now = new Date();
     let startTime = new Date(now);
@@ -160,7 +144,7 @@ export default function AdminPage() {
     const { error } = await supabase.from('site_settings').update({
       maintenance_type: siteSettings.maintenance_type,
       maintenance_message: siteSettings.maintenance_message,
-      maintenance_notice: siteSettings.maintenance_notice, // 儲存專屬公告
+      maintenance_notice: siteSettings.maintenance_notice,
       maintenance_start_time: startImmediately ? null : startTime.toISOString(),
       maintenance_end_time: endTime.toISOString(),
       maintenance_mode: startImmediately,
@@ -171,13 +155,9 @@ export default function AdminPage() {
     else { showToast('✅ 維護已排程/啟動！'); setShowMaintenanceModal(false); fetchData(); }
   };
 
-  // 🚀 結束維護
   const handleStopMaintenance = async () => {
     const { error } = await supabase.from('site_settings').update({
-      maintenance_mode: false, 
-      maintenance_start_time: null, 
-      maintenance_end_time: null, 
-      maintenance_notice: null // 清除專屬公告
+      maintenance_mode: false, maintenance_start_time: null, maintenance_end_time: null, maintenance_notice: null
     }).eq('id', 1);
     if (error) showToast('❌ 結束失敗'); else { showToast('✅ 維護已結束'); fetchData(); }
   };
@@ -185,7 +165,6 @@ export default function AdminPage() {
   if (checkingAuth) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center font-mono">Checking Permissions...</div>;
   if (!isAdmin) return null;
 
-  // ================= 數據計算 =================
   const totalCoins = users.reduce((acc, u) => acc + (u.leo_coins || 0), 0);
   const actionGames = games.filter(g => g.category === 'Action').length;
   const rpgGames = games.filter(g => g.category === 'RPG').length;
@@ -306,7 +285,6 @@ export default function AdminPage() {
       {selectedMetric && <MetricDetailModal metric={selectedMetric} onClose={() => setSelectedMetric(null)} />}
       {statsEntity && <EntityStatsModal entity={statsEntity.data} type={statsEntity.type} onClose={() => setStatsEntity(null)} />}
 
-      {/* 🚀 啟動維護彈窗 (含專屬公告) */}
       {showMaintenanceModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
           <div className="bg-gray-800 border border-gray-700 rounded-2xl p-8 w-full max-w-2xl shadow-2xl">
@@ -346,12 +324,6 @@ export default function AdminPage() {
                 <textarea className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white h-20 resize-none" value={siteSettings.maintenance_message} onChange={(e) => setSiteSettings({...siteSettings, maintenance_message: e.target.value})} placeholder="請輸入維護提示..." />
               </div>
 
-              {/* 🚀 專屬公告輸入框 */}
-              <div>
-                <label className="block text-sm text-yellow-500 mb-2 font-bold">維護專屬公告 (顯示在倒數計時上方，選填)</label>
-                <input type="text" className="w-full bg-gray-900 border border-yellow-900/50 rounded-lg p-3 text-yellow-400" value={siteSettings.maintenance_notice} onChange={(e) => setSiteSettings({...siteSettings, maintenance_notice: e.target.value})} placeholder="例如：由於發現嚴重漏洞，維護時間將延長..." />
-              </div>
-
               <div className="bg-gray-900/30 p-4 rounded-xl border border-gray-800">
                 <label className="block text-sm text-gray-400 mb-3 font-bold">預計維護時長 (從開始維護算起)</label>
                 <div className="grid grid-cols-6 gap-2">
@@ -369,8 +341,8 @@ export default function AdminPage() {
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-700/50">
-              <button onClick={() => setShowMaintenanceModal(false)} className="px-6 py-3 rounded-xl text-gray-400 hover:text-white transition font-bold">取消</button>
-              <button onClick={handleStartMaintenance} className="bg-red-600 hover:bg-red-500 text-white font-bold px-8 py-3 rounded-xl transition shadow-[0_0_15px_rgba(255,0,0,0.4)]">🚀 確認啟動</button>
+              <button onClick={() => setShowMaintenanceModal(false)} className="px-6 py-3 rounded-xl text-gray-400 hover:text-white font-bold btn-secondary">取消</button>
+              <button onClick={handleStartMaintenance} className="bg-red-600 text-white font-bold px-8 py-3 rounded-xl btn-danger">🚀 確認啟動</button>
             </div>
           </div>
         </div>
@@ -380,15 +352,15 @@ export default function AdminPage() {
       <div className="w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-10">
         <div className="p-6 border-b border-gray-800"><h2 className="text-xl font-bold text-cyan-400 flex items-center gap-2"><img src="/logo.png" alt="Logo" className="h-6" /> 控制台</h2></div>
         <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-1 px-3">
-          <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-lg flex items-center gap-3 font-medium transition ${activeTab === 'dashboard' ? 'bg-gray-800 text-cyan-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>📊 數據總覽</button>
-          <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-lg flex items-center gap-3 font-medium transition ${activeTab === 'users' ? 'bg-gray-800 text-cyan-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>👥 用戶管理</button>
-          <button onClick={() => setActiveTab('games')} className={`px-4 py-2 rounded-lg flex items-center gap-3 font-medium transition ${activeTab === 'games' ? 'bg-gray-800 text-cyan-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>🎮 遊戲管理</button>
-          <button onClick={() => setActiveTab('changelog')} className={`px-4 py-2 rounded-lg flex items-center gap-3 font-medium transition ${activeTab === 'changelog' ? 'bg-gray-800 text-cyan-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>📝 更新日誌</button>
-          <button onClick={() => setActiveTab('global')} className={`px-4 py-2 rounded-lg flex items-center gap-3 font-medium transition ${activeTab === 'global' ? 'bg-gray-800 text-cyan-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>⚙️ 系統與全站</button>
+          <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-lg flex items-center gap-3 font-medium transition active:scale-95 ${activeTab === 'dashboard' ? 'bg-gray-800 text-cyan-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>📊 數據總覽</button>
+          <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-lg flex items-center gap-3 font-medium transition active:scale-95 ${activeTab === 'users' ? 'bg-gray-800 text-cyan-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>👥 用戶管理</button>
+          <button onClick={() => setActiveTab('games')} className={`px-4 py-2 rounded-lg flex items-center gap-3 font-medium transition active:scale-95 ${activeTab === 'games' ? 'bg-gray-800 text-cyan-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>🎮 遊戲管理</button>
+          <button onClick={() => setActiveTab('changelog')} className={`px-4 py-2 rounded-lg flex items-center gap-3 font-medium transition active:scale-95 ${activeTab === 'changelog' ? 'bg-gray-800 text-cyan-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>📝 更新日誌</button>
+          <button onClick={() => setActiveTab('global')} className={`px-4 py-2 rounded-lg flex items-center gap-3 font-medium transition active:scale-95 ${activeTab === 'global' ? 'bg-gray-800 text-cyan-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>⚙️ 系統與全站</button>
         </div>
         <div className="p-4 border-t border-gray-800">
-          <button onClick={async () => { await supabase.auth.signOut(); router.push('/'); }} className="text-red-400 hover:text-red-300 mb-3 flex items-center gap-2 w-full font-bold">🚪 登出後台</button>
-          <Link href="/" className="text-gray-500 hover:text-white flex items-center gap-2 font-bold">🔙 返回前台</Link>
+          <button onClick={async () => { await supabase.auth.signOut(); router.push('/'); }} className="text-red-400 hover:text-red-300 mb-3 flex items-center gap-2 w-full font-bold transition active:scale-95">🚪 登出後台</button>
+          <Link href="/" className="text-gray-500 hover:text-white flex items-center gap-2 font-bold transition active:scale-95">🔙 返回前台</Link>
         </div>
       </div>
 
@@ -401,7 +373,6 @@ export default function AdminPage() {
 
         <div className="flex-1 overflow-y-auto p-8">
           
-          {/* 數據總覽 */}
           {activeTab === 'dashboard' && (
              <div>
                <div className="flex justify-between items-end mb-6">
@@ -413,7 +384,7 @@ export default function AdminPage() {
 
                <div className="flex flex-wrap gap-2 mb-4 bg-gray-800 p-2 rounded-xl border border-gray-700">
                  {[{ id: 'area', label: '📈 面積圖' }, { id: 'line', label: '📉 折線圖' }, { id: 'bar', label: '📊 柱狀圖' }, { id: 'pie', label: '🥧 餅圖' }, { id: 'donut', label: '🍩 甜甜圈' }, { id: 'radar', label: '🕸️ 雷達圖' }, { id: 'composed', label: '混合圖' }, { id: 'stacked', label: '堆疊圖' }].map(t => (
-                   <button key={t.id} onClick={() => setChartType(t.id)} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${chartType === t.id ? 'bg-cyan-600 text-white shadow-[0_0_10px_rgba(0,255,204,0.4)]' : 'bg-gray-900 text-gray-400 hover:bg-gray-700 hover:text-white'}`}>{t.label}</button>
+                   <button key={t.id} onClick={() => setChartType(t.id)} className={`px-4 py-2 rounded-lg text-sm font-bold transition active:scale-95 ${chartType === t.id ? 'bg-cyan-600 text-white shadow-[0_0_10px_rgba(0,255,204,0.4)]' : 'bg-gray-900 text-gray-400 hover:bg-gray-700 hover:text-white'}`}>{t.label}</button>
                  ))}
                </div>
 
@@ -428,7 +399,7 @@ export default function AdminPage() {
                <h2 className="text-xl font-bold mb-4 text-gray-300">詳細指標列表 (點擊展開)</h2>
                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                  {statsData.map((stat, i) => (
-                   <div key={i} onClick={() => setSelectedMetric(stat)} className="bg-gray-800/80 p-5 rounded-xl border border-gray-700/50 hover:border-cyan-500/50 hover:bg-gray-800 hover:scale-[1.03] cursor-pointer transition shadow-lg group">
+                   <div key={i} onClick={() => setSelectedMetric(stat)} className="bg-gray-800/80 p-5 rounded-xl border border-gray-700/50 hover:border-cyan-500/50 hover:bg-gray-800 hover:scale-[1.03] active:scale-[0.97] cursor-pointer transition shadow-lg group">
                      <div className="flex justify-between items-start mb-2">
                        <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">{stat.label}</span>
                        <span className="text-lg opacity-70 group-hover:opacity-100 group-hover:scale-110 transition">{stat.icon}</span>
@@ -440,7 +411,6 @@ export default function AdminPage() {
              </div>
           )}
 
-          {/* 用戶管理 */}
           {activeTab === 'users' && (
              <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
                <table className="w-full text-left text-sm text-gray-400">
@@ -450,8 +420,8 @@ export default function AdminPage() {
                        <td className="px-4 py-3 font-mono text-cyan-400">{user.uid}</td>
                        <td className="px-4 py-3 text-white font-medium">{user.username}</td>
                        <td className="px-4 py-3 flex gap-2">
-                         <button onClick={() => setStatsEntity({ data: user, type: 'user' })} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-1.5 rounded-lg font-bold text-xs transition">📊 數據</button>
-                         <button onClick={() => setDrawerUser(user)} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded-lg font-bold text-xs transition">⚙️ 管理</button>
+                         <button onClick={() => setStatsEntity({ data: user, type: 'user' })} className="bg-gray-700 text-white px-4 py-1.5 rounded-lg font-bold text-xs btn-secondary">📊 數據</button>
+                         <button onClick={() => setDrawerUser(user)} className="bg-cyan-600 text-white px-4 py-1.5 rounded-lg font-bold text-xs btn-primary">⚙️ 管理</button>
                        </td>
                      </tr>
                    ))}
@@ -460,7 +430,6 @@ export default function AdminPage() {
              </div>
           )}
           
-          {/* 遊戲管理 */}
           {activeTab === 'games' && (
              <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
                <table className="w-full text-left text-sm text-gray-400">
@@ -469,8 +438,8 @@ export default function AdminPage() {
                      <tr key={game.id} className="border-b border-gray-700 hover:bg-gray-700/50">
                        <td className="px-4 py-3 text-white font-medium">{game.title}</td>
                        <td className="px-4 py-3 flex gap-2">
-                         <button onClick={() => setStatsEntity({ data: game, type: 'game' })} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-1.5 rounded-lg font-bold text-xs transition">📊 數據</button>
-                         <button onClick={() => setDrawerGame(game)} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded-lg font-bold text-xs transition">⚙️ 管理</button>
+                         <button onClick={() => setStatsEntity({ data: game, type: 'game' })} className="bg-gray-700 text-white px-4 py-1.5 rounded-lg font-bold text-xs btn-secondary">📊 數據</button>
+                         <button onClick={() => setDrawerGame(game)} className="bg-cyan-600 text-white px-4 py-1.5 rounded-lg font-bold text-xs btn-primary">⚙️ 管理</button>
                        </td>
                      </tr>
                    ))}
@@ -479,7 +448,6 @@ export default function AdminPage() {
              </div>
           )}
           
-          {/* 更新日誌 */}
           {activeTab === 'changelog' && (
             <div className="max-w-6xl">
               <h1 className="text-2xl font-bold mb-8">版本更新日誌管理</h1>
@@ -487,7 +455,6 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* 系統與全站控制 */}
           {activeTab === 'global' && (
             <div className="max-w-6xl space-y-8">
               <h1 className="text-2xl font-bold mb-6">系統與全站控制</h1>
@@ -507,33 +474,30 @@ export default function AdminPage() {
                     <label className="block text-sm text-gray-400 mb-2 font-bold">背景顏色</label>
                     <input type="color" className="w-full h-14 bg-gray-900 border border-gray-700 rounded-lg p-1 cursor-pointer" value={siteSettings.announcement_bg_color} onChange={(e) => setSiteSettings({...siteSettings, announcement_bg_color: e.target.value})} />
                   </div>
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2 font-bold">滾動速度</label>
-                    <input type="number" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-medium" value={siteSettings.announcement_speed} onChange={(e) => setSiteSettings({...siteSettings, announcement_speed: Number(e.target.value)})} />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2 font-bold">滾動方向</label>
-                    <select className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white font-medium" value={siteSettings.announcement_direction} onChange={(e) => setSiteSettings({...siteSettings, announcement_direction: e.target.value})}>
-                      <option value="left">⬅️ 由右至左</option>
-                      <option value="right">➡️ 由左至右</option>
-                    </select>
-                  </div>
                 </div>
                 <div className="flex justify-end pt-4 border-t border-gray-700/50">
-                  <button onClick={handleSaveMarquee} className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-8 rounded-xl transition">🚀 發布跑馬燈</button>
+                  <button onClick={handleSaveMarquee} className="bg-cyan-600 text-white font-bold py-3 px-8 rounded-xl btn-primary">🚀 發布跑馬燈</button>
                 </div>
               </div>
 
               <div className="bg-gray-800/40 border border-gray-700/80 rounded-2xl p-8 relative shadow-2xl">
                 <h2 className="text-xl font-bold mb-6 flex items-center gap-2">🛑 全站維護控制台</h2>
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-gray-900/50 p-6 rounded-xl border border-gray-800">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-gray-900/50 p-6 rounded-xl border border-gray-800 mb-6">
                   <div>
                     <h3 className="text-lg font-bold text-white mb-1">準備好要進行維護了嗎？</h3>
                     <p className="text-sm text-gray-400 font-medium">點擊右側按鈕將會彈出設定視窗，並在倒數後強制所有玩家進入維護狀態。</p>
                   </div>
                   <div className="flex gap-4">
-                    <button onClick={handleStopMaintenance} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-xl transition whitespace-nowrap">結束維護 / 取消排程</button>
-                    <button onClick={() => setShowMaintenanceModal(true)} className="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-8 rounded-xl transition whitespace-nowrap shadow-[0_0_20px_rgba(255,0,0,0.3)] hover:shadow-[0_0_30px_rgba(255,0,0,0.6)]">🚀 啟動全站維護</button>
+                    <button onClick={handleStopMaintenance} className="bg-gray-700 text-white font-bold py-3 px-6 rounded-xl whitespace-nowrap btn-secondary">結束維護 / 取消排程</button>
+                    <button onClick={() => setShowMaintenanceModal(true)} className="bg-red-600 text-white font-bold py-3 px-8 rounded-xl whitespace-nowrap btn-danger">🚀 啟動全站維護</button>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-xl p-6">
+                  <label className="block text-sm text-yellow-500 mb-2 font-bold">維護專屬公告 (維護開始後，即時顯示在前台遮罩)</label>
+                  <div className="flex gap-4">
+                    <input type="text" className="flex-1 bg-gray-900 border border-yellow-900/50 rounded-lg p-3 text-yellow-400 font-medium" value={siteSettings.maintenance_notice || ''} onChange={(e) => setSiteSettings({...siteSettings, maintenance_notice: e.target.value})} placeholder="例如：由於發現嚴重漏洞，維護時間將延長..." />
+                    <button onClick={handleSaveMaintenanceNotice} className="bg-yellow-600 text-black font-bold px-6 rounded-lg btn-primary">儲存公告</button>
                   </div>
                 </div>
               </div>
@@ -543,7 +507,7 @@ export default function AdminPage() {
                  <div className="flex flex-col gap-4">
                    <div className="flex gap-3">
                      <input type="number" className="flex-1 bg-gray-900 border border-gray-700 rounded-xl p-4 text-white font-bold" placeholder="輸入數量..." value={globalCoins} onChange={(e) => setGlobalCoins(Number(e.target.value))} />
-                     <button onClick={handleGlobalCoins} disabled={isGloballyUpdating} className="bg-yellow-600 hover:bg-yellow-500 text-black font-bold px-8 rounded-xl transition">{isGloballyUpdating ? '發放中...' : '全服發送'}</button>
+                     <button onClick={handleGlobalCoins} disabled={isGloballyUpdating} className="bg-yellow-600 text-black font-bold px-8 rounded-xl btn-primary disabled:opacity-50 disabled:active:scale-100">{isGloballyUpdating ? '發放中...' : '全服發送'}</button>
                    </div>
                    <label className="flex items-center gap-3 cursor-pointer bg-gray-900/50 p-4 rounded-xl border border-gray-800">
                      <input type="checkbox" className="w-5 h-5 accent-cyan-500" checked={notifyCoins} onChange={(e) => setNotifyCoins(e.target.checked)} />
