@@ -17,6 +17,7 @@ export default function SiteStatus() {
   const isAdminPage = pathname?.startsWith('/admin');
   const hasReloaded = useRef(false);
 
+  // 🚀 核心：獲取設定與即時監聽
   useEffect(() => {
     const fetchStatus = async () => {
       const { data: siteData } = await supabase.from('site_settings').select('*').eq('id', 1).single();
@@ -24,10 +25,7 @@ export default function SiteStatus() {
         setSettings(siteData);
         if (siteData.maintenance_end_time) {
           const d = new Date(siteData.maintenance_end_time);
-          // 🚀 修復：強制使用英文格式
-          setLocalEndTime(d.toLocaleString('en-US', { 
-            year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-          }));
+          setLocalEndTime(d.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
         }
       }
       const { data: { session } } = await supabase.auth.getSession();
@@ -37,9 +35,22 @@ export default function SiteStatus() {
       }
       setLoading(false);
     };
+    
     fetchStatus();
-    const interval = setInterval(fetchStatus, 5000);
-    return () => clearInterval(interval);
+
+    // 🚀 即時監聽資料庫變化 (不用重新刷新，一發布立刻生效！)
+    const channel = supabase
+      .channel('site_settings_realtime')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'site_settings' }, (payload) => {
+        setSettings(payload.new);
+        if (payload.new.maintenance_end_time) {
+          const d = new Date(payload.new.maintenance_end_time);
+          setLocalEndTime(d.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   useEffect(() => {
@@ -92,6 +103,10 @@ export default function SiteStatus() {
 
   const isMaintenanceActive = settings.maintenance_mode || (maintenanceCountdown !== null && maintenanceCountdown <= 0);
   
+  // 🚀 判斷跑馬燈是否過期
+  const isAnnouncementExpired = settings.announcement_expires_at && new Date(settings.announcement_expires_at) < new Date();
+  const showMarquee = settings.announcement_text && !isMaintenanceActive && !isAdminPage && !isAnnouncementExpired && !is10sWarning;
+
   let warningMsg = '';
   if (maintenanceCountdown !== null && maintenanceCountdown > 10) {
     const days = Math.floor(maintenanceCountdown / 86400);
@@ -109,6 +124,7 @@ export default function SiteStatus() {
 
   return (
     <>
+      {/* 🚀 10 秒倒數遮罩 */}
       {is10sWarning && maintenanceCountdown !== null && (
         <div className="fixed inset-0 z-[999999] bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center text-white">
           <div className="text-8xl md:text-9xl font-black text-red-500 animate-bounce drop-shadow-[0_0_30px_rgba(255,0,0,0.8)]">
@@ -118,6 +134,7 @@ export default function SiteStatus() {
         </div>
       )}
 
+      {/* 🚀 維護遮罩 */}
       {isMaintenanceActive && !isAdmin && (
         <div className="fixed inset-0 z-[999998] bg-[#050810] flex flex-col items-center justify-center text-white px-6 overflow-hidden">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-red-500/10 blur-[120px] rounded-full pointer-events-none"></div>
@@ -126,7 +143,6 @@ export default function SiteStatus() {
             <h1 className="text-3xl md:text-5xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-400 tracking-wider text-center uppercase">{settings.maintenance_type}</h1>
             <p className="text-lg text-gray-400 text-center leading-relaxed mb-6 whitespace-pre-wrap">{settings.maintenance_message}</p>
             
-            {/* 🚀 新增：管理員專屬公告 */}
             {settings.maintenance_notice && (
               <div className="w-full bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-6 text-yellow-400 text-center font-bold text-sm">
                 📢 {settings.maintenance_notice}
@@ -150,14 +166,15 @@ export default function SiteStatus() {
         </div>
       )}
 
-      <div className="fixed top-0 left-0 w-full z-[60] flex flex-col pointer-events-none">
+      {/* 🚀 警告條與跑馬燈 (移到 Navbar 下方，不遮擋 Logo) */}
+      <div className="fixed top-16 left-0 w-full z-40 flex flex-col pointer-events-none">
         {warningMsg && !isMaintenanceActive && !isAdminPage && (
           <div className="w-full bg-yellow-500 text-black text-sm font-bold py-2 text-center shadow-md animate-pulse pointer-events-auto border-b border-black/20">
             {warningMsg}
           </div>
         )}
 
-        {settings.announcement_text && !isMaintenanceActive && !isAdminPage && !warningMsg && (
+        {showMarquee && (
           <div 
             className="w-full overflow-hidden pointer-events-auto relative group border-b border-black/20"
             style={{ backgroundColor: settings.announcement_bg_color || '#06b6d4' }}
