@@ -12,11 +12,8 @@ export default function ChangelogPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // 留言輸入狀態
   const [inputText, setInputText] = useState<{ [key: string]: string }>({});
   const [selectedReaction, setSelectedReaction] = useState<{ [key: string]: string }>({});
-
-  // 🚀 自訂高級 Toast 狀態
   const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
@@ -70,16 +67,16 @@ export default function ChangelogPage() {
     }
 
     try {
+      // 1. 記錄點讚
       const { error: insertError } = await supabase.from('changelog_likes').insert([{ changelog_id: logId, user_id: currentUser.id }]);
       if (insertError) throw insertError;
 
-      const log = logs.find(l => l.id === logId);
-      const newLikesCount = (log.likes || 0) + 1;
-      
-      await supabase.from('changelogs').update({ likes: newLikesCount }).eq('id', logId);
+      // 2. 呼叫安全函數，在資料庫把讚數 +1
+      await supabase.rpc('increment_changelog_likes', { log_id: logId });
 
+      // 3. 樂觀更新前端畫面（不用重新整理，數字直接 +1）
       setLikedLogs([...likedLogs, logId]);
-      setLogs(logs.map(l => l.id === logId ? { ...l, likes: newLikesCount } : l));
+      setLogs(logs.map(l => l.id === logId ? { ...l, likes: (l.likes || 0) + 1 } : l));
       showToast('Thanks for your feedback!', 'success');
       
     } catch (err: any) {
@@ -128,7 +125,6 @@ export default function ChangelogPage() {
   return (
     <div className="min-h-screen bg-gray-900 text-white pt-28 pb-20 px-4 md:px-8 relative">
       
-      {/* 🚀 高級自訂 Toast 彈窗 */}
       <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[99999] transition-all duration-300 ${toast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}>
         {toast && (
           <div className={`px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 backdrop-blur-md border font-bold text-sm
