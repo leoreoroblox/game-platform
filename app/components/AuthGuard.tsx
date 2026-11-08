@@ -289,7 +289,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
             <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[99999]">
               <div className="bg-[#181a21] w-full max-w-lg rounded-xl p-8 shadow-2xl border border-gray-800">
                 <h2 className="text-2xl font-bold text-white mb-4">{showTerms ? 'Terms of Use' : 'Privacy Policy'}</h2>
-                <p className="text-gray-400 text-sm mb-6">This is a placeholder. Leo Game's official {showTerms ? 'Terms of Use' : 'Privacy Policy'} will be available here before launch.</p>
+               <div className="space-y-4 text-sm">
+  <p><strong>1. Acceptance of Terms</strong><br/>By accessing Leo Game, you agree to these Terms. If you are under 13, parental consent is required.</p>
+  <p><strong>2. User Accounts</strong><br/>You are responsible for your account security and accurate registration.</p>
+  <p><strong>3. Virtual Currency</strong><br/>Leo Coins and L pieces have no real-world value. All transactions are final. Alpha phase coins are free.</p>
+  <p><strong>4. User Content (UGC)</strong><br/>No illegal, hateful, or copyright-infringing content. Violators will be banned.</p>
+  <p><strong>5. Trading System</strong><br/>We provide a trading tool, not an escrow. Trade at your own risk. Fraud results in account bans.</p>
+  <p><strong>6. Limitation of Liability</strong><br/>The platform is "as is". We are not responsible for player disputes or lost items.</p>
+</div>
                 <button onClick={() => { setShowTerms(false); setShowPrivacy(false); }} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-md">Close</button>
               </div>
             </div>
