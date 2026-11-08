@@ -10,6 +10,7 @@ import SiteStatus from './components/SiteStatus';
 import UpdateNotifier from './components/UpdateNotifier';
 import Navbar from './components/Navbar'; 
 import Sidebar from './components/Sidebar'; 
+import AuthGuard from './components/AuthGuard'; // 🚀 引入防護罩
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -28,28 +29,30 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900`}>
-        <Suspense fallback={null}>
-          <SiteStatus />
-          <ClientLoader />
-          <UserTracker />
-          <BanOverlay />
-          <UpdateNotifier />
-        </Suspense>
-
-        {/* 頂部導航 */}
-        <Navbar /> 
         
-        {/* 🚀 左右佈局：左側選單 + 右側內容 */}
-        <div className="flex min-h-screen pt-16">
-          {/* 用 Suspense 包裹 Sidebar，解決 usePathname 報錯 */}
-          <Suspense fallback={<div className="w-64 bg-gray-950 hidden md:block fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-gray-800" />}>
-            <Sidebar />
+        {/* 🚀 用 AuthGuard 包住整個網站 */}
+        <AuthGuard>
+          <Suspense fallback={null}>
+            <SiteStatus />
+            <ClientLoader />
+            <UserTracker />
+            <BanOverlay />
+            <UpdateNotifier />
           </Suspense>
+
+          <Navbar /> 
           
-          <main className="flex-1 md:ml-64 w-full">
-            {children}
-          </main>
-        </div>
+          <div className="flex min-h-screen pt-16">
+            <Suspense fallback={<div className="w-64 bg-gray-950 hidden md:block fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-gray-800" />}>
+              <Sidebar />
+            </Suspense>
+            
+            <main className="flex-1 md:ml-64 w-full">
+              {children}
+            </main>
+          </div>
+        </AuthGuard>
+
       </body>
     </html>
   );
