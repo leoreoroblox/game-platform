@@ -1,9 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; // 🚀 合併匯入
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname(); // 🚀 取得當前路徑
+  const isAdminRoute = pathname?.startsWith('/admin'); // 🚀 判斷是否為後台
+
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isLogin, setIsLogin] = useState(true);
@@ -13,7 +17,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const [showOtpMode, setShowOtpMode] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
-  const [comingSoonFeature, setComingSoonFeature] = useState<string | null>(null); // 🚀 新增 Coming Soon 狀態
+  const [comingSoonFeature, setComingSoonFeature] = useState<string | null>(null);
 
   // 表單狀態
   const [email, setEmail] = useState('');
@@ -115,6 +119,11 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   };
 
   if (loading) return <div className="min-h-screen bg-[#050810]"></div>;
+
+  // 🚀 核心修改：如果是進入後台，直接放行 children，讓後台自己去驗證權限！
+  if (isAdminRoute) {
+    return <>{children}</>;
+  }
 
   return (
     <>

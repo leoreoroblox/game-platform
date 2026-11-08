@@ -15,8 +15,6 @@ export default function SiteStatus() {
 
   const pathname = usePathname();
   const isAdminPage = pathname?.startsWith('/admin');
-  
-  // 🚀 這是防止無限刷新的關鍵鎖
   const hasReloaded = useRef(false);
 
   useEffect(() => {
@@ -26,13 +24,16 @@ export default function SiteStatus() {
         setSettings(siteData);
         if (siteData.maintenance_end_time) {
           const d = new Date(siteData.maintenance_end_time);
-          setLocalEndTime(d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
+          // 🚀 修復：強制使用英文格式
+          setLocalEndTime(d.toLocaleString('en-US', { 
+            year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+          }));
         }
       }
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const { data: userData } = await supabase.from('users').select('role').eq('id', session.user.id).single();
-        if (userData?.role === 'admin') setIsAdmin(true);
+        if (userData?.role === 'admin' || userData?.role === 'owner') setIsAdmin(true);
       }
       setLoading(false);
     };
@@ -46,7 +47,6 @@ export default function SiteStatus() {
     const timer = setInterval(() => {
       const now = new Date().getTime();
 
-      // 1. 處理「即將開始維護」的倒數
       if (settings.maintenance_start_time) {
         const startTime = new Date(settings.maintenance_start_time).getTime();
         const diff = Math.floor((startTime - now) / 1000);
@@ -57,12 +57,10 @@ export default function SiteStatus() {
         } else {
           setMaintenanceCountdown(0);
           setIs10sWarning(false);
-          
-          // 🚀 終極防無限刷新邏輯
-          if (!isAdmin && !isAdminPage && !hasReloaded.current) {
+          if (!hasReloaded.current && !isAdmin && !isAdminPage) {
             const hasRefreshed = sessionStorage.getItem('maintenance_refreshed');
             if (!hasRefreshed) {
-              hasReloaded.current = true; 
+              hasReloaded.current = true;
               sessionStorage.setItem('maintenance_refreshed', 'true');
               window.location.reload();
             }
@@ -73,7 +71,6 @@ export default function SiteStatus() {
         setIs10sWarning(false);
       }
 
-      // 2. 處理「維護結束」的倒數
       if (settings.maintenance_end_time) {
         const end = new Date(settings.maintenance_end_time).getTime();
         const distance = end - now;
@@ -112,7 +109,6 @@ export default function SiteStatus() {
 
   return (
     <>
-      {/* 🚨 最後 10 秒的全螢幕倒數 */}
       {is10sWarning && maintenanceCountdown !== null && (
         <div className="fixed inset-0 z-[999999] bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center text-white">
           <div className="text-8xl md:text-9xl font-black text-red-500 animate-bounce drop-shadow-[0_0_30px_rgba(255,0,0,0.8)]">
@@ -122,15 +118,21 @@ export default function SiteStatus() {
         </div>
       )}
 
-      {/* 🛑 維護遮罩 (管理員免疫) */}
       {isMaintenanceActive && !isAdmin && (
         <div className="fixed inset-0 z-[999998] bg-[#050810] flex flex-col items-center justify-center text-white px-6 overflow-hidden">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-red-500/10 blur-[120px] rounded-full pointer-events-none"></div>
           <div className="relative z-10 flex flex-col items-center max-w-2xl w-full">
             <div className="text-7xl mb-6 animate-pulse">🛠️</div>
             <h1 className="text-3xl md:text-5xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-400 tracking-wider text-center uppercase">{settings.maintenance_type}</h1>
-            <p className="text-lg text-gray-400 text-center leading-relaxed mb-10 whitespace-pre-wrap">{settings.maintenance_message}</p>
+            <p className="text-lg text-gray-400 text-center leading-relaxed mb-6 whitespace-pre-wrap">{settings.maintenance_message}</p>
             
+            {/* 🚀 新增：管理員專屬公告 */}
+            {settings.maintenance_notice && (
+              <div className="w-full bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-6 text-yellow-400 text-center font-bold text-sm">
+                📢 {settings.maintenance_notice}
+              </div>
+            )}
+
             {endCountdown && (
               <div className="bg-gray-900/80 backdrop-blur-md border border-gray-700/50 rounded-2xl p-8 text-center shadow-[0_0_40px_rgba(255,0,0,0.1)] w-full">
                 <div className="text-sm text-gray-500 font-bold uppercase tracking-[0.2em] mb-4">Estimated Time Remaining</div>
@@ -148,7 +150,6 @@ export default function SiteStatus() {
         </div>
       )}
 
-      {/* 警告與跑馬燈 */}
       <div className="fixed top-0 left-0 w-full z-[60] flex flex-col pointer-events-none">
         {warningMsg && !isMaintenanceActive && !isAdminPage && (
           <div className="w-full bg-yellow-500 text-black text-sm font-bold py-2 text-center shadow-md animate-pulse pointer-events-auto border-b border-black/20">
